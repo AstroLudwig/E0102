@@ -1,3 +1,4 @@
+# -*- Copyright (c) 2018, Bethany Ann Ludwig, All rights reserved. -*-
 import numpy as np
 from astropy.io import fits
 from astropy.convolution import convolve_fft
@@ -9,8 +10,6 @@ from reproject import reproject_interp
 ##  ~         Convolution Routine           ~  ##
 ## ******************************************  ##
 #################################################
-
-test = True
 
 """
 This is a convolution script which allows you to adjust the resolution of one 
@@ -129,7 +128,7 @@ def getscalekern(kernname):
 
 # Matches pixel scale of kernel to the image needed.
 # Need the name of the imported file, before data/hdr seperation
-def resample(kern, kernelfile,imgfile,test): 
+def resample(kern, kernelfile,imgfile): 
     scalekern_x, scalekern_y = getscalekern(kernelfile) 
     scaleimg_x, scaleimg_y =  getscaleimg(imgfile)
     
@@ -143,16 +142,6 @@ def resample(kern, kernelfile,imgfile,test):
     newfile = scipy.ndimage.zoom(kern, 1/scaling, order=1) 
     
     print(("Scale for Kernel: {} Scale for img: {} New Kernel Scale: {}").format(scalekern_x,scaleimg_x,scalekern_x*(np.shape(kern)[0]/np.shape(newfile)[0]) ))
-    # Left an option here where you can test to see if resampling makes sense
-    # Outputs a small sample range before and after resampling.
-    if test: 
-        print('Before:') # Print out a test view before resampling
-        ind_x, ind_y = np.unravel_index(np.argmax(kern),np.shape(kern))
-        print(kern[(ind_x-2):(ind_x+3), (ind_x-2):(ind_x+3)])  
-        print('After:') # Print out a test view after resampling
-        ind_ax, ind_ay = np.unravel_index(np.argmax(newfile),np.shape(newfile))
-        print(newfile[(ind_ax-2):(ind_ax+3), (ind_ax-2):(ind_ax+3)])  
-        
     
     return newfile
 
