@@ -17,7 +17,7 @@ homogenized_check = False # Check to see if things are changing
 check_mask = False # Check that mask is working.
 check_result = False # Plot background and subtraction
 save = True # Save
-f_24um = False
+f_24um = True
 f_70um = False
 #################
 # File Handling #
@@ -29,16 +29,16 @@ if f_24um:
     # Original, Median Removed File
     f = fits.open('../../Sky_Remove/Median_Removed/24um_medianRemoved.fits')
     # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Extend/Mask_World_24_V2_ext_20.txt')
+    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_24_ext_20.txt')
     um = '24' # for saving file types
     folder = 'im24/' #folder name for saving   
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
-if f_70um_extend:
+if f_70um:
     # Original, Median Removed File
     f = fits.open('../../Sky_Remove/Median_Removed/70um_medianRemoved.fits')
     # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Extend/Mask_World_70_ext_20.txt')
+    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_70_ext_20.txt')
     um = '70'
     folder = 'im70/' #folder name for saving  
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)

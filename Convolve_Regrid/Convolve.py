@@ -181,7 +181,7 @@ def master_convolve(kernelfilename, sciencefilename, savename):
         print ('Pixel Scales Match.')  
         print (' ')
     else:
-        kernel = resample(kernel,kernel_file,science_file,'False')
+        kernel = resample(kernel,kernel_file,science_file)
         print (' ')
         
     # Step 2 : Check that the kernel sums to 1. Ok to do this more then once. 

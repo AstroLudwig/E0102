@@ -27,7 +27,7 @@ Folder contains all Kernels used for convolution. Kernels obtained from [Aniano+
 Convolve.py is a convolution module where the master_convolve function can be called in other scripts. The process ensures that the Kernel is equal to one, the max value of the Kernel is in the center, the Kernel array is square. This code isn't built to handle rotation but does flag a warning if rotation needs to be accounted for (i.e. CD1_2 and CD2_1 are nonzero.) This code also doesn't work on rare Kernels that do not contain a single peak intensity in the center. 
 
 ## Mask Creation
-Mask coordinates are obtained using canny edge detection algorithm from opencv2. The mask is then extended 20 pixels to the left to avoid overcompensating for mission-line nebula N76 to the 'right' of E0102 during background removal.
+Mask coordinates are obtained using Chandra Xray data of E0102 at 1100-2000 eV. The data is convolved to the appropriate resolution. The canny edge detection algorithm from opencv2 is used to get the coordinates. The mask is then extended 20 pixels to the left to avoid overcompensating for emission-line nebula N76 during background removal.
 ## Background Removal
 E0102 is located within a spatially variable background that must be considered before any measurements can take place.    
 The four data points we are using to make the measurement include images at 24 microns (Spitzer) and 70, 100, 160 microns (Herschel).        
