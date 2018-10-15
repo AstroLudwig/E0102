@@ -3,7 +3,9 @@
 NAME:
     Diffusion
 PURPOSE:
-    To Model and Remove the Background of 24 and 70 micron images.    
+    To Model and Remove the Background of 24 and 70 micron images. 
+NOTE: 
+    If starting from scratch you will need to create the appropriate folders for this to run.        
 """
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,8 +19,8 @@ homogenized_check = False # Check to see if things are changing
 check_mask = False # Check that mask is working.
 check_result = False # Plot background and subtraction
 save = True # Save
-f_24um = True
-f_70um = False
+f_24um = False
+f_70um = True
 #################
 # File Handling #
 #################

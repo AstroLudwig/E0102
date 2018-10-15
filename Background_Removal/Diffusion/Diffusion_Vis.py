@@ -16,20 +16,16 @@ from astropy import units as u
 ############
 # Switches # 
 ############
-
+# Which image to view
 im_24 = False
-im_70 = False
-
-# Open a range of fits files
-# Opening all of them at once can crash things depending on your system.
-# This functionality gives you more control.
-get_data = False
+im_70 = True
 
 # Set up Plot of Background, Subtraction, and Negatives
 # Include some interaction 
 slider = False
 
 # Save the slider plots incrementally
+# Run before saving the video.
 save_img = False
 
 # Turn those plots into a video 
@@ -62,11 +58,11 @@ if im_70:
     folder = 'im70'
     save_name = folder+'/imgs/im70'
     video_name = '70um_diffusion.avi'
-    prefix = 'im70/imgs/im70ext_20_'
+    prefix = 'im70/imgs/im70'
 
-# Define length of video
+# Define number of files being used
 start = 5
-stop =  3000 
+stop =  4000
 steps = 5
 # save names
 app_sub = '_steps_snr.fits'
@@ -100,18 +96,19 @@ def negative_img(subtraction_img):
 
 # -*- Set up initial plot -*-
    # Get initial data
-if get_data:   
-    original_neg = count_negs(fits.open(original)[0].data)
-    sub_data=[];bkgd_data=[]; sub_negs = [];bkgd_negs = []; neg_imgs = []
-    for i in range(start,stop,5):
-        with fits.open(pref_sub+str(i)+app_sub) as hdu_sub:
-            sub_data.append(hdu_sub[0].data)
-            sub_negs.append(count_negs(hdu_sub[0].data))
-            neg_imgs.append(negative_img(hdu_sub[0].data))
+ 
+original_neg = count_negs(fits.open(original)[0].data)
+sub_data=[];bkgd_data=[]; sub_negs = [];bkgd_negs = []; neg_imgs = []; sub_hdr = []
+for i in range(start,stop,5):
+    with fits.open(pref_sub+str(i)+app_sub) as hdu_sub:
+        sub_hdr.append(hdu_sub[0].header)
+        sub_data.append(hdu_sub[0].data)
+        sub_negs.append(count_negs(hdu_sub[0].data))
+        neg_imgs.append(negative_img(hdu_sub[0].data))
 
-        with fits.open(pref_bkgd+str(i)+app_bkgd) as hdu_bkgd:
-            bkgd_data.append(hdu_bkgd[0].data)
-            bkgd_negs.append(count_negs(hdu_bkgd[0].data))
+    with fits.open(pref_bkgd+str(i)+app_bkgd) as hdu_bkgd:
+        bkgd_data.append(hdu_bkgd[0].data)
+        bkgd_negs.append(count_negs(hdu_bkgd[0].data))
 
 if slider:
      # Initialize Plot
@@ -180,7 +177,7 @@ if slider:
 
     # Create Sliders
     axcolor = 'aliceblue'
-    length = len(np.arange(1,steps,5)) - 1
+    length = len(np.arange(start,stop,5)) - 1
     ax_y = plt.axes([0.25, 0.2, 0.65, 0.03], facecolor=axcolor)
     slide = Slider(ax_y, 'File: ', 0, length, valinit=0, valfmt='%0.0f')
     slide.on_changed(update)
@@ -223,7 +220,6 @@ if save_img:
         ax.plot([2,2,2], label= ("N in Subtraction: {:.3f} ").format(sub_negs[i]))
         ax.plot([1,1,1], label=("Time Step: {:.0f}").format(r[i]))
         ax.legend(bbox_to_anchor=(0.05, 1), loc=1, borderaxespad=0.)
-      #  plt.show()
 
         print(("Saving image number: {}").format(r[i]))
         figure = plt.gcf() # get current figure
@@ -240,14 +236,12 @@ if save_video:
     Diffusion_Video.create_video(prefix,video_name,start,stop)
 
 if hist:
-    def Prune(fname):
+    def Prune(data,hdr):
         # Numerical Values from Sandstrom 2009
         c_dec = -72.03125; c_ra = 16.00875
         d = 61 #kpc
         arcs = 22
-        # Get snr data and header
-        data = fits.open(fname)[0].data
-        hdr = fits.open(fname)[0].header
+
         w = WCS(hdr)
         # For each pixel we need to know it's ra/dec coordinates
         a,b = np.shape(data)
@@ -268,15 +262,6 @@ if hist:
 
         return data
 
-    negs = []; sums = []; pruned = [];
-    for i in range(steps_start,steps,5):
-        hdu = fits.open(pref_sub+str(i)+app_sub) 
-        im = hdu[0].data[np.where(np.isfinite(hdu[0].data))]
-        count = len(im[im < 0.])
-        negs.append(count)
-        sums.append(np.nansum(hdu[0].data))
-        pruned.append(np.nansum(Prune(pref_sub+str(i)+app_sub)))
-        hdu.close()
     def findPer(arr,percent): # percent should be a decimal
         arr = np.asarray(arr)
         atol = 1
@@ -288,7 +273,17 @@ if hist:
             
         return ind[0]     
 
-    x = np.arange(steps_start,steps,5)
+    negs = np.zeros(int((stop-start)/5)); sums = np.copy(negs); pruned = np.copy(negs);
+    print("Pruning Data. Please wait.")
+
+    for i in range(int((stop-start)/5)):
+        im = sub_data[i][np.where(np.isfinite(sub_data[i]))]
+        count = len(im[im < 0.])
+        negs[i] = (count)
+        sums[i] = (np.nansum(sub_data[i]))
+        pruned[i] = (np.nansum(Prune(sub_data[i],sub_hdr[i])))
+
+    x = np.arange(start,stop,5)
     
     plt.figure(1)
     
@@ -323,7 +318,7 @@ if hist:
     plt.title(folder)
     
     plt.figure(5)
-    origSum = np.sum(Prune(original))
+    origSum = np.sum(Prune(fits.open(original)[0].data,fits.open(original)[0].header))
     diffs_ = np.abs(pruned-origSum)/origSum * 100
     plt.plot(x,diffs_)
     plt.xlabel('Steps')
