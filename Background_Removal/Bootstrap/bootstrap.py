@@ -5,6 +5,10 @@ NAME:
 PURPOSE:
     Solve for a scale factor between 70 micron modeled background and both 100 and 160 micron images.
     Create a new modeled background and subtract from remnant.
+KNOWN PROBLEM:
+	Welcome to the joys of cross platform development. reproject_exact blew up my windows computer but 
+	appears to run fine on ubuntu. If getting an insane infite loop when running this code then regrid 
+	is being a problem. 
 """
 import sys
 sys.path.insert(0, '../../Convolve_Regrid')
@@ -24,21 +28,26 @@ import prune
 #     SWITCHES     #
 ####################
 
-# Plot Switches For Linear Fit. 
+# Plot pixel intensities in the original image
+# as a function of pixel intensities in the modeled background.
+# Fit a line to this data to use as the scale factor. 
 plt_linearFit = True
-plt_bkgdSubtraction = True
-plt_Histogram = True 
-plt_FitRegion = True
-plt_subAnnulus = True  
-plt_compareHist = True
+# Show the results of the SNR and the new modeled background
+plt_result = True
+plt_Histogram = False
+plt_FitRegion = False
+plt_subAnnulus = True
+plt_compareHist = False
+plt_sloppy = False
 
 # Convolve and regrid 70 um modeled background
 # to whichever file you're using.
 # Doesn't need to be done more than once.
-convolve_regrid = True
+convolve_regrid = False
 
 # Fitting Switch
-ForceSlope = False
+Detection_Limited = True
+OverSubtracted_Region = False
 clip = False # Changes the range you're fitting. 
 
 # Annulus Size defined as 22 arcseconds from 
@@ -62,15 +71,18 @@ if im100:
 	kern = '../../Convolve_Regrid/Kernels/Kernel_LoRes_PACS_70_to_PACS_100.fits'
 	im =  '../../Sky_Remove/Median_Removed/100um_medianRemoved.fits'
 	conv_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_100umRes.fits'
-	regrid_sname = '../../Convolve_Regrid/Convolutions/bkgd70_ext_20_tstep_3000_to_100umRes_Resampled.fits'
+	regrid_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_100umRes_Resampled.fits'
+	sigma  = np.loadtxt('../../Sky_Remove/Sigma.txt')[2]
+	fname = '100um_70modeled'
+	sname = '100um_70modeled_ForceSlope'
 
+	# Arbitrary stuff for plotting
 	vmin=0;vmax=30 #bkgd
 	vmin_=-10; vmax_=100 #img
 	vmin_sub = 4; vmax_sub= 30 # subtraction
-	
 	xdim = [170,230]; ydim = [160,220]
-	fname = '100um_70modeled'
-	sname = '100um_70modeled_ForceSlope'
+
+	# Region that is commonly over subtracted
 	sq_row = [200,200,200,201,201,201,202,202,202]
 	sq_col = [198,199,200,198,199,200,198,199,200]
 
@@ -79,187 +91,189 @@ if im160:
 	kern = '../../Convolve_Regrid/Kernels/Kernel_LoRes_PACS_70_to_PACS_160.fits'	
 	im = '../../Sky_Remove/Median_Removed/160um_medianRemoved.fits'
 	conv_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_160umRes.fits'
-	regrid_sname = '../../Convolve_Regrid/Convolutions/bkgd70_ext_20_tstep_3000_to_160umRes_Resampled.fits'
-
+	regrid_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_160umRes_Resampled.fits'
+	sigma  = np.loadtxt('../../Sky_Remove/Sigma.txt')[3]
+	fname = '160um_70modeled'
+	sname = '160um_70modeled_ForceSlope'
+	
+	# Arbitrary stuff for plotting
 	vmin=5;vmax=50 #bkgd
 	vmin_=10; vmax_=50 #img
 	vmin_sub = 4; vmax_sub= 30 # subtraction
-
 	xdim = [110,150]; ydim = [100,135]
-	fname = '160um_70modeled'
-	sname = '160um_70modeled_ForceSlope'
+	
+	# Region that is commonly over subtracted
 	sq_row = [124,124,124,125,125,125,126,126,126]
 	sq_col = [124,125,126,124,125,126,124,125,126]
 
-if convolve_regrid:
-	#Convolve.master_convolve(kern,bkgd,conv_sname)
+if convolve_regrid: # Note that this gave me a lot of problems on windows but not on linux
+	Convolve.master_convolve(kern,bkgd,conv_sname)
 	Regrid.resample(conv_sname,im,regrid_sname)	
 
 bkgd = fits.open(regrid_sname)[0].data
+bkgdhdr = fits.open(regrid_sname)[0].header
 img = fits.open(im)[0].data
 hdr = fits.open(im)[0].header
-w = wcs.WCS(hdr)
-
 
 ##################
 # Fitting Region #
 ##################
-
 # Create Annulus of data in both the image and the background.
 
-imgShell = prune.Annulus(np.copy(img),"Annulus")		
-bkgdShell = prune.Annulus(np.copy(bkgd),"Annulus")
+imgShell = prune.Annulus(np.copy(img),hdr,thickness)		
+bkgdShell = prune.Annulus(np.copy(bkgd),bkgdhdr,thickness)
 
 Ratio = np.copy(bkgdShell)/np.copy(imgShell)
+med = np.nanmedian(Ratio)
 
-###############
-#  Clipping   #
-###############
+# Get 1D arrays of pixel intensities. 
+in_img = img[np.where(np.isfinite(imgShell))].flatten()
+in_bkgd = bkgd[np.where(np.isfinite(imgShell))].flatten()
 
-def clip(img,ratio,level):
-	nData = np.copy(img)
-	ind_r, ind_c = np.shape(ratio)
-	med = np.nanmedian(ratio); std = np.nanstd(ratio)
-	print(("Fitting Region. Median: {} Std: {}").format(med,std))
+########################
+#  Detection Limited   #
+########################
+if Detection_Limited:
+	def FindLimitedPixels(data,level): 
+		# Returns sensitivity limited data, anything below X sigma is included.
+		# in the original image we are modeling
+		# Level is to adjust sensitivity (I.e. 2 sigma, 3 sigma, etc.)
+		row = []; column = [];
+		# We only care about pixels within the SNR
+		nImg = prune.Prune(data,hdr)
+		for i in range(np.shape(nImg)[0]):
+			for j in range(np.shape(nImg)[1]):
+				if np.isfinite(nImg[i,j]) and nImg[i,j] < sigma * level:
+					row.append(i); column.append(j)			
+		return data[row, column]
+	# We want to pick a slope that doesn't over compensate
+	# for extreme intensity values due to the nebula.
 
-	clipRange = [med - level*std, med  + level*std]
-	print(("Clipping Range: {} to {}").format(clipRange[0],clipRange[1]))				
+	# Our test for a slope, will be one that gets the detection 
+	# limited pixels closest to zero.
 
-	for i in range(ind_r):
-		for j in range(ind_c):
-			if ratio[i,j] < clipRange[0]: #or clipImg[i,j] > clipRange[1]:
-				nData[i,j] = np.nan
-			elif ratio[i,j] > clipRange[1]:
-				nData[i,j] = np.nan
-	return nData 
+	# Get an initial slope without adjusting for sensitivity limited pixels.
+	slope = 1/np.nanmedian(np.copy(bkgdShell)/np.copy(imgShell))
+	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
+	line = xvals * slope
+	print("The initial slope based on the inverse median is: "+str(slope))
+	# Create a range of those slopes
+	slopeRange = np.arange(slope-5,slope+5,.1)
 
-if clip:
-	level = 2	# Select  Level of Clipping
+	# Find the subtraction that gets the detection limited pixels closest to 0.
+	testResults = []; 
+	for i in range(len(slopeRange)):
+		newBkgd = np.copy(bkgd) * slopeRange[i]
+		newSnr = np.copy(img) - newBkgd
+		testResults.append(np.median(FindLimitedPixels(newSnr,2)))
+	find = np.where(np.isclose(testResults,0.,atol=0.1))	
+	slope = slopeRange[find]
+	line = xvals * slope
+	print("Adjusting slope to account for intensity extremes. New slope is: "+str(slope))
 
-	imgShell = clip(imgShell,Ratio,level)
-	bkgdShell = clip(bkgdShell,Ratio,level)
+########################
+#  Detection Limited   #
+########################
+if OverSubtracted_Region:
+	# We know there's a dark region of the SNR that is commonly oversubtracted in all images.
+	# This hand defines that region as sq_row sq_column and then adjusts the slope to best
+	# make that region 0. 
 
-	newRatio = np.copy(bkgdShell)/np.copy(imgShell)
+	# Starting slope
+	slope = 1/np.nanmedian(np.copy(bkgdShell)/np.copy(imgShell))
 
-	med = np.nanmedian(newRatio)
-
-	afterClip = np.copy(bkgdShell/imgShell)
-
-in_img = img[np.where(np.isfinite(imgShell))]
-in_bkgd = bkgd[np.where(np.isfinite(imgShell))]
-
-in_bkgd = in_bkgd.flatten()
-in_img = in_img.flatten()
-
-#######################################################
-# Fitting elements in Annulus with Linear Regression  #
-#######################################################
-
-# Create x values
-xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
-
-# Uses the median as a slope.
-line = xvals * 1/med
-
-if ForceSlope:
-	# Select a region in img 
-
-	# Starting place 
-	med = np.nanmedian(np.copy(bkgdShell)/np.copy(imgShell))
-	# Create a starting image
-	line = xvals * 1/med
-	newbkgd = np.copy(bkgd) * 1/med
-	
-	newsub = np.copy(img) - newbkgd
-	# This is the region we want to be 0
-	sq = newsub[sq_row,sq_col]	
-	# range of other slopes to test things out on 
-	medRange = np.arange(med-5,med+5,.01)
+	# Range of slopes based on starting slope
+	slopeRange = np.arange(slope-5,slope+5,.01)
 	# create new subs
 	testMedians = []
 
-	for i in range(len(medRange)):
-
-		newBkgd = np.copy(bkgd) * 1/medRange[i]
-		newSub = np.copy(img)-newBkgd
+	for i in range(len(slopeRange)):
+		# Create new SNR based on an adjusted slope.
+		newBkgd = np.copy(bkgd) * slopeRange[i]
+		newSub = np.copy(img)- newBkgd
+		# Get the region that is usually very negative.
 		testRegion = newSub[sq_row,sq_col]
+		# Take the median 
 		testMedians.append(np.median(testRegion))
 
+	# Find which slope makes that median closest to 0 and then use that slope.	
 	find = np.where(np.isclose(testMedians,0.,atol=0.1))
-	print(("New Slope: {} ").format(medRange[find]))
+	
+	slope = np.mean(slopeRange[find])
+	print(("New Slope: {} ").format(slope))
+	
+	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
+	line = xvals * slope
 
-	med = medRange[find]
+################################
+#  Create Background and SNR   #
+################################
 
-######################
-# Create Subtraction #
-######################
-
-newbkgd = np.copy(bkgd) * 1/med
+newbkgd = np.copy(bkgd) * slope
 newsub = np.copy(img) - newbkgd
-newsubSNR = prune(np.copy(newsub),"snr")
-plt.figure()
+snr = prune.Prune(np.copy(newsub),hdr)
 
-plt.imshow(newsubSNR,vmin = np.nanmin(newsubSNR),vmax=np.nanmax(newsubSNR))
-plt.xlim(xdim); plt.ylim(ydim)
-plt.scatter(sq_col,sq_row,c='r',s=0.5)
-histsub = prune(np.copy(newsub),"snr")
-histdata = histsub[np.where(np.isfinite(histsub))].flatten()
 
-subSum = prune(newsub,"snr")
-print(("Sum of Subtraction: {}").format(np.nansum(subSum)))	
-subSnr = subSum[np.where(np.isfinite(newsub))]
-print(("Sum of Subtraction Negatives: {}").format(np.nansum(subSnr[np.where(subSnr<0)])))	
+# Create data for histogram
+histData = snr[np.where(np.isfinite(snr))].flatten()
+
+# Print some results to quantify oversubtraction
+print(("Supernova Total: {}").format(np.nansum(snr)))	
+print(("Oversubtraction total: {}").format(np.nansum(histData[np.where(histData<0)])))	
 
 ########################
 # Plotting and Testing #
 ########################
-# Check that everythings imported and fine. 
 
 if plt_linearFit:
+	# Plot image as a function of background.
+	# Fit a line using median as slope
 	plt.figure()
 	plt.scatter(in_bkgd,in_img,s=.1)
 	plt.plot(xvals,line)
 	plt.xlabel('Background Pixel Intensities')
 	plt.ylabel('Original Image Pixel Intensities')
 	plt.title("Annulus Intensity Ratio")
-if plt_bkgdSubtraction:
+if plt_result:
+	# Show the result
+	# subtraction and background
 	g, (ex,fx) = plt.subplots(1,2,sharey=True)
-	#ex.imshow(newsub,vmin=vmin_sub,vmax=vmax_sub)
 	ex.imshow(newsub,vmin=vmin,vmax=vmax)
 	cfx=fx.imshow(newbkgd,vmin=vmin,vmax=vmax)
-	#cfx=fx.imshow(newbkgd,vmin=vmin_sub,vmax=vmax_sub)
 	ex.set_xlim(xdim); ex.set_ylim(ydim)
 	fx.set_xlim(xdim); fx.set_ylim(ydim)
 	ex.set_title("Subtracted")
 	fx.set_title("Background")
 	cbar = g.colorbar(cfx)
 if plt_Histogram:
-	k, (lx,kx) = plt.subplots(1,2)
-	lx.hist(histdata)
-	kx.imshow(histsub)
+	# Show the pruned supernova remnant
+	# Look at how much of the pixels are negative
+	# Look closer at how the negatives are distributed
+	k, (lx,kx,jx) = plt.subplots(1,3)
+	lx.hist(histData)
+	kx.imshow(snr)
+	jx.hist(histData[np.where(histData<0)])
 	kx.set_xlim(xdim); kx.set_ylim(ydim)
-	kx.set_title("Subtraction. Outer Radius Removed")
+	kx.set_title("Pruned Subtraction. ")
 	lx.set_title("Pixel Intensities in Subtracted Remnant")
-	#negs
-	plt.figure()
-	a = np.where(histdata<0)
-	plt.hist(histdata[a])
+	jx.set_title("Negative Pixel Values Only")
+	
 if plt_FitRegion:
-#	x,y = w.all_world2pix(ra,dec,1)
+	# Look at annulus in background and image.
+	# Take clipping into account.
 	p, (qx,rx) = plt.subplots(1,2)
 	qx.imshow(bkgdShell,vmin=vmin,vmax=vmax)
-	qx.scatter(x,y,s=.1)
 	rx.imshow(imgShell,vmin=vmin_,vmax=vmax_)
-	rx.scatter(x,y,s=.1)
+
 	qx.set_xlim(xdim); qx.set_ylim(ydim)
 	rx.set_xlim(xdim); rx.set_ylim(ydim)
 	qx.set_title("Background Annulus")
 	rx.set_title("Image Annulus")
 if plt_subAnnulus:
 	f2, (ax2,bx2) = plt.subplots(1,2)
-	subannulus = prune(np.copy(newsub),"Annulus")
-	if clip:
-		subannulus = clip(subannulus)
+	subannulus = prune.Annulus(np.copy(newsub),hdr,thickness)
+	#if clip:
+	#	subannulus = clip(subannulus,Ratio,level)
 	ax2.imshow(subannulus)
 	ax2.set_xlim(xdim); ax2.set_ylim(ydim)
 	print(("Subtracted Annulus: Max {} Min {}").format(np.nanmax(subannulus),np.nanmin(subannulus)))
@@ -277,7 +291,6 @@ if plt_compareHist:
 ##############
 
 if save:
-
 	fits.writeto(fname+'/'+sname+'_snr.fits',newsub,hdr,overwrite=True)
 	fits.writeto(fname+'/'+sname+'_bkgd.fits',newbkgd,hdr,overwrite=True)
 
