@@ -1,3 +1,10 @@
+# -*- Copyright (c) 2018, Bethany Ann Ludwig, All rights reserved. -*-
+"""
+NAME:
+    Prune
+PURPOSE:
+    To remove everything outside of a 22" radius from E0102
+"""
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.io import fits

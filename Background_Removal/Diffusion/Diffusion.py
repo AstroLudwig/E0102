@@ -1,161 +1,73 @@
-# -*- coding: utf-8 -*-
+# -*- Copyright (c) 2018, Bethany Ann Ludwig, All rights reserved. -*-
 """
-Created on Tue Mar 27 16:20:44 2018
-
-@author: Betha
+NAME:
+    Diffusion
+PURPOSE:
+    To Model and Remove the Background of 24 and 70 micron images. 
+NOTE: 
+    If starting from scratch you will need to create the appropriate folders for this to run.        
 """
-homogenized_check = False # Check to see if things are changing
-step1 = False # Check that mask is working.
-step2 = False # Plot background and subtraction
-step3 = True # Save
-step4 = False # Save to test file
-f_24um = False
-f_24um_extend = False
-f_70um = False
-f_70um_extend = False
-f_100um = False
-f_160um = False
-# Ratios
-f70_100 = False
-f70_160 = False
-f100_160 = True
-
-
-ext = 0 # If you're using an extended mask, select file extension number here.
-vmin = 0; vmax=30
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS
 
+############
+# Switches # 
+############
+homogenized_check = False # Check to see if things are changing
+check_mask = False # Check that mask is working.
+check_result = False # Plot background and subtraction
+save = True # Save
+f_24um = False
+f_70um = True
+#################
+# File Handling #
+#################
+vmin = 0; vmax=30
 
 if f_24um:
+    print('Diffusing 24 microns')
     # Original, Median Removed File
     f = fits.open('../../Sky_Remove/Median_Removed/24um_medianRemoved.fits')
     # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_24_V2.txt')
+    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_24_ext_20.txt')
     um = '24' # for saving file types
-    folder = 'im24/' #folder name for saving
-    data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))
-if f_24um_extend:
-    print(('Diffusing 24 microns extended by {}').format(ext))
-    # Original, Median Removed File
-    f = fits.open('../../Sky_Remove/Median_Removed/24um_medianRemoved.fits')
-    # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Extend/Mask_World_24_V2_ext_'+str(ext)+'.txt')
-    um = '24' # for saving file types
-    folder = 'im24_ext_'+str(ext)+'/' #folder name for saving   
+    folder = 'im24/' #folder name for saving   
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
 if f_70um:
     # Original, Median Removed File
     f = fits.open('../../Sky_Remove/Median_Removed/70um_medianRemoved.fits')
     # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_70.txt')
+    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_70_ext_20.txt')
     um = '70'
-    folder = 'im70/' #folder name for saving
-if f_70um_extend:
-    # Original, Median Removed File
-    f = fits.open('../../Sky_Remove/Median_Removed/70um_medianRemoved.fits')
-    # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Extend/Mask_World_70_ext_'+str(ext)+'.txt')
-    um = '70'
-    folder = 'im70_ext_'+str(ext)+'/' #folder name for saving  
+    folder = 'im70/' #folder name for saving  
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
-if f70_100:
-    # Sky removed image 70 convolved and regridded to 100. SNR NOT removed.
-    f70 = fits.open('../../Convolve_Regrid/Conv_Regrids/SkyRemovd70_to_100_CR.fits')
-    # Sky removed 100
-    f100 = fits.open('../../Sky_Remove/Median_Removed/100um_medianRemoved.fits')
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_100.txt')
-    um = '100'
-    folder = 'ratio_100_to_70/'
-    data = f100[0].data/f70[0].data; hdr = f100[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))
-if f70_160:
-    # Sky removed image 70 convolved and regridded to 100. SNR NOT removed.
-    f70 = fits.open('../../Convolve_Regrid/Conv_Regrids/SkyRemoved70_to_160_CR.fits')
-    # Sky removed 100
-    f160 = fits.open('../../Sky_Remove/Median_Removed/160um_medianRemoved.fits')
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_160.txt')
-    um = '160'
-    folder = 'ratio_160_to_70/'
-    data = f160[0].data/f70[0].data; hdr = f160[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))    
-if f100_160:
-    # Sky removed image 100 convolved and regridded to 160. SNR NOT removed.
-    f100 = fits.open('../../Convolve_Regrid/Conv_Regrids/SkyRemovd100_to_160_CR.fits')
-    # Sky removed 100
-    f160 = fits.open('../../Sky_Remove/Median_Removed/160um_medianRemoved.fits')
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_160.txt')
-    um = '160'
-    folder = 'ratio_160_to_100/'
-    data = f160[0].data/f100[0].data; hdr = f160[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))        
-if f_100um:
-    # Original, Median Removed File
-    f = fits.open('../../Sky_Remove/Median_Removed/100um_medianRemoved.fits')
-    # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_100.txt')
-    um = '100'
-    folder = 'im100/' #folder name for saving
-    data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))
-if f_160um:
-    # Original, Median Removed File
-    f = fits.open('../../Sky_Remove/Median_Removed/160um_medianRemoved.fits')
-    # Import mask coordinates
-    ra,dec = np.loadtxt('../../Masks/Xray/Mask_World_160.txt')
-    um = '160'
-    folder = 'im160/' #folder name for saving
-    data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
-    x,y = np.round(wcs.all_world2pix(ra,dec,1))    
-# Checking that mask is correct 
-if step1:
+
+# Plot image and mask to make sure files are correct.
+if check_mask:
     plt.figure()
-    plt.imshow(data,vmin=0,vmax=30)
+    plt.imshow(data,vmin=vmin,vmax=vmax)
     plt.scatter(x,y,s=0.1,c='r')
     plt.xlim(190,320)
     plt.ylim(190,280)
 
-###############
-# Snr Removed #
-###############
-def removeSnr(data,hdr):
-    w = WCS(hdr)
-    # For each pixel we need to know it's ra/dec coordinates
-    a,b = np.shape(data)
-    row = np.arange(0,a); col = np.arange(0,b)
-    row,col=np.meshgrid(row,col)
-    row=row.flatten(); col=col.flatten()
-
-    all_ra, all_dec = w.all_pix2world(col,row,1)
-    # Numbers here are from Karin's paper.
-    c1 = SkyCoord(c_ra*u.deg, c_dec*u.deg, distance=d*u.kpc, frame='icrs')
-    c2 = SkyCoord(all_ra*u.deg, all_dec*u.deg, distance=d*u.kpc, frame='icrs')
-
-    sep = c1.separation_3d(c2)
-    radius = d*u.kpc*arcs/206265
-
-    look =np.where(sep < radius)
-
-    data[row[look],col[look]] = 0
-    return data
 #############
 # Diffusion #
 #############
-
-#######################
-# General Notes #
-#######################
 #
 # x, y are pixel coordinates of the mask
 #
 
-# Find rectangle enclosing all data points in diffusion region.
+# Select region to diffuse over rather than the entire image:
+
+# Define rectangle enclosing all data points in diffusion region.
 # (minY, minX) will be the bottom left corner of the region.
+
+# Data within this rectangle but outside the mask is not included
+# when subtracting the background. 
 minX = int(min(x))
 maxX = int(max(x)+1)
 minY = int(min(y))
@@ -188,7 +100,8 @@ def ApplyBoundaryConditions(original_data, new_data, index_set, timestep) :
 # Apply one step of the diffusion.
 def StepForward(data, timestep) :
     xLim, yLim, junk = np.shape(data)
-    # Kappa should be small, but is arbitrary as we are using the 
+    # Kappa should be small to avoid converging too quicly, 
+    # but is arbitrary as we are using the 
     # homoginzed solution as a final stopping place. 
     alpha = 0.1
     for i in range(1, xLim-1) :
@@ -221,7 +134,10 @@ def InsideSet(index_array, i, j) :
 saveEveryXFrames = 5
 maxNumberOfSteps = 10000
 saveCounter = 0
+# Create empty data cube for just snr region 
+# (data outside of the rectangle is extraneous and does not need to be considered)
 intensity_values = np.zeros([maxY-minY, maxX-minX, maxNumberOfSteps])
+# Fill in the mask coordinates with their original intensity values. 
 ApplyBoundaryConditions(data, intensity_values, xyZip, 0);
 
 # Diffusion Loop
@@ -232,6 +148,7 @@ for t in range(1,maxNumberOfSteps+1):
     ApplyBoundaryConditions(data, intensity_values, xyZip, t);
 
     if homogenized_check:
+        # Check to see if things have stopped changing.
         previousSum = 0
         sumSoFar = 0
         sumSoFar = np.sum(intensity_values[:,:,t])
@@ -252,24 +169,11 @@ for t in range(1,maxNumberOfSteps+1):
             if InsideSet(xyArray, i, j) :
                 shell[j,i] = intensity_values[j-minY, i-minX, t]
     
-    
-    # Ratio, Special Cases:
-    if f100_160:
-        shell = np.copy(shell) * fits.open('../../Convolve_Regrid/Conv_Regrids/bkgd100_bootstrappedWith70diffusedbkgd_CRto160.fits')[0].data
-        sub = f160[0].data - np.copy(shell)
-    if f70_160:
-        shell = np.copy(shell)  * fits.open('../../Convolve_Regrid/Conv_Regrids/bkgd70_diffused_6000thstep_20ext_CRto160.fits')[0].data
-        sub = f160[0].data - np.copy(shell)        
-    if f70_100:  
-        shell = np.copy(shell) * fits.open('../../Convolve_Regrid/Conv_Regrids/bkgd70_ext_20_tstep_6000_to_100_CR.fits')[0].data
-        sub = f100[0].data - np.copy(shell)
-    
-    # Most Cases:
-    else:
-       sub = np.copy(data) - np.copy(shell)
+    # Remove the background (shell) from the original image.
+    sub = np.copy(data) - np.copy(shell)
 
     # Plot each:   
-    if step2:
+    if check_result:
         f, (ax,bx) = plt.subplots(1,2,sharey=False)
         ax.imshow(sub,vmin=vmin,vmax=vmax)
         bx.imshow(shell,vmin=vmin,vmax=vmax)
@@ -279,12 +183,8 @@ for t in range(1,maxNumberOfSteps+1):
         bx.set_ylim(190,280)
 
     # Save
-    if step3:
+    if save:
         fits.writeto(folder+'snr'+um+'/'+um+'um_diff_'+str(t)+'_steps_snr.fits',sub,header=hdr,overwrite=True)
         fits.writeto(folder+'bkgd'+um+'/'+um+'um_diff_'+str(t)+'_steps_bkgd.fits',shell,header=hdr,overwrite=True)
-
-    if step4:
-        fits.writeto('Sky_Remove/Diff/test/snr/70um_diff_'+str(t)+'_steps_snr.fits',sub,header=hdr,overwrite=True)
-        fits.writeto('Sky_Remove/Diff/test/bkgd/70um_diff_'+str(t)+'_steps_bkgd.fits',shell,header=hdr,overwrite=True)
 
 plt.show()
