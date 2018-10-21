@@ -37,8 +37,6 @@ plt_result = True
 plt_Histogram = False
 plt_FitRegion = False
 plt_subAnnulus = True
-plt_compareHist = False
-plt_sloppy = False
 
 # Convolve and regrid 70 um modeled background
 # to whichever file you're using.
@@ -46,8 +44,8 @@ plt_sloppy = False
 convolve_regrid = False
 
 # Fitting Switch
-Detection_Limited = True
-OverSubtracted_Region = False
+Detection_Limited = False
+OverSubtracted_Region = True
 clip = False # Changes the range you're fitting. 
 
 # Annulus Size defined as 22 arcseconds from 
@@ -153,7 +151,7 @@ if Detection_Limited:
 	# limited pixels closest to zero.
 
 	# Get an initial slope without adjusting for sensitivity limited pixels.
-	slope = 1/np.nanmedian(np.copy(bkgdShell)/np.copy(imgShell))
+	slope = np.nanmedian(np.copy(imgShell)/np.copy(bkgdShell))
 	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
 	line = xvals * slope
 	print("The initial slope based on the inverse median is: "+str(slope))
@@ -180,7 +178,7 @@ if OverSubtracted_Region:
 	# make that region 0. 
 
 	# Starting slope
-	slope = 1/np.nanmedian(np.copy(bkgdShell)/np.copy(imgShell))
+	slope = np.nanmedian(np.copy(imgShell)/np.copy(bkgdShell))
 
 	# Range of slopes based on starting slope
 	slopeRange = np.arange(slope-5,slope+5,.01)
@@ -212,7 +210,6 @@ if OverSubtracted_Region:
 newbkgd = np.copy(bkgd) * slope
 newsub = np.copy(img) - newbkgd
 snr = prune.Prune(np.copy(newsub),hdr)
-
 
 # Create data for histogram
 histData = snr[np.where(np.isfinite(snr))].flatten()
@@ -247,7 +244,7 @@ if plt_result:
 	cbar = g.colorbar(cfx)
 if plt_Histogram:
 	# Show the pruned supernova remnant
-	# Look at how much of the pixels are negative
+	# Look at how many pixels are negative
 	# Look closer at how the negatives are distributed
 	k, (lx,kx,jx) = plt.subplots(1,3)
 	lx.hist(histData)
@@ -259,8 +256,7 @@ if plt_Histogram:
 	jx.set_title("Negative Pixel Values Only")
 	
 if plt_FitRegion:
-	# Look at annulus in background and image.
-	# Take clipping into account.
+	# Look at annulus in background and image before doing anything.
 	p, (qx,rx) = plt.subplots(1,2)
 	qx.imshow(bkgdShell,vmin=vmin,vmax=vmax)
 	rx.imshow(imgShell,vmin=vmin_,vmax=vmax_)
@@ -270,22 +266,14 @@ if plt_FitRegion:
 	qx.set_title("Background Annulus")
 	rx.set_title("Image Annulus")
 if plt_subAnnulus:
+	# Annulus in subtracted snr image
 	f2, (ax2,bx2) = plt.subplots(1,2)
 	subannulus = prune.Annulus(np.copy(newsub),hdr,thickness)
-	#if clip:
-	#	subannulus = clip(subannulus,Ratio,level)
 	ax2.imshow(subannulus)
 	ax2.set_xlim(xdim); ax2.set_ylim(ydim)
 	print(("Subtracted Annulus: Max {} Min {}").format(np.nanmax(subannulus),np.nanmin(subannulus)))
 	bx2.hist(subannulus[np.where(np.isfinite(subannulus))].flatten())
 	ax2.set_title("Linear Fit")
-if plt_compareHist:
-	plt.figure(7)
-	beforeClipHist = beforeClip[np.where(np.isfinite(beforeClip))]
-	afterClipHist = afterClip[np.where(np.isfinite(afterClip))]
-	plt.hist(beforeClipHist,bins=10,color='blue')
-	plt.hist(afterClipHist,bins=10,color='red')
-
 ##############
 # Save Game? #
 ##############
