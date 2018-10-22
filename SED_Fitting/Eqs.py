@@ -1,26 +1,26 @@
+# -*- Copyright (c) 2018, Bethany Ann Ludwig, All rights reserved. -*-
+"""
+NAME:
+    Equations
+PURPOSE:
+    Modules for SED and VisSED: 
+        Planck Equation 
+        Modified Single Temperature Black Body Equation,
+        Extrapolate Kappa 
+        Physical Pixel Area
+        Error 
+        General SED
+        Integrated SED
+        Chi Squared Maps
+"""
 from timeit import default_timer as timer
-
 import numpy as np
-
 from astropy import units as u
 from astropy.io import fits
 from astropy import constants as const
-
 from scipy.optimize import curve_fit
-
 import numexpr as ne
 
-"""
-This script is a module for the equations needed by SED.py and VisSed.py
-It contains: the planck equation, the modified single temperature black body equation,
-and functions to: extrapolate the kappa array we have, to determine the physical pixel area,
-to determine the error, to measure the general SED, to fit the SED to different intensities, 
-to make Chi maps for plotting the contours. 
-
-Units are in CGS
-"""
-# Switch for turning on plots to test
-# some of the equations in this script.
 test = False
 
 ####################
@@ -46,9 +46,9 @@ def B_nu(wav,temp):
     ans  = (first * second).to(u.MJy/u.sr)
     
     return ans
-####################
-# ModBB Function  #
-####################
+#################################
+# Modified Black Body Function  #
+#################################
 
 # Modified Single Temperature Black Body equation
 
@@ -61,9 +61,6 @@ def ModBB(kappa_arr,area,wav,lam,Temp,Mass):
             kappa = kappa_arr[np.where(np.isclose(lam,wav[i]))[0][0]] * u.cm * u.cm / u.g
             E = Mass * M_sun / area
             B = B_nu(wav[i], Temp)
-            #B = PlanckDict[lam[np.isclose(wav[i],lam)][0]]
-            #if not(type(Mass) == list or type(Mass) == np.ndarray):
-            #    B = B_nu(wav[i], Temp)
             ans = kappa * E * B 
             if ans.unit != "MJy/sr":
                 print(("Warning, ModBB units = {}").format(ans.unit))
@@ -133,24 +130,7 @@ def error(vals):
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
     # Calibration Error, may need to update this?
     Calibr = np.repeat(.1,4)
-    # May need to update this also. Background Removal method chnged. 
-    BkgRemov = np.array([0.004714082,0.078627909,.25,.5])
-    # Initiate blank error array   
-    err = np.zeros(4)
-    # Fill array with appropriate errors.
-    for i in range(4):
-        X = vals[i]
-        quad = (Noise[i])**2 + (Calibr[i]*X)**2 + (BkgRemov[i]*X)**2
-        err[i] = (np.sqrt(quad))
-    return np.asarray(err)
 
-# Second error function without background removal error. 
-
-def errorNoBkgd(vals):
-    # Standard Deviation in the Region chosen for Sky Removal
-    Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
-    # Calibration Error, may need to update this?
-    Calibr = np.repeat(.1,4)
     # Initiate blank error array   
     err = np.zeros(4)
     # Fill array with appropriate errors.
@@ -160,9 +140,10 @@ def errorNoBkgd(vals):
         err[i] = (np.sqrt(quad))
     return np.asarray(err)
 
-############################################
-# Measured SED and Total Area of Remnant   #
-############################################
+
+####################################
+# Average Pixel Intensity and Area #
+####################################
 
 # The measured SED is just an average of the intensities in the SNR
 # This returns that average and the physical area of the remnant. 
@@ -321,24 +302,15 @@ def CalculateChiNoBkgd(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKap
 # Testing #
 ###########
 if test: 
-
-    
-    
+    # Ensure that SED code will accurately predict it's own measurements.
     import matplotlib.pyplot as plt
     # From some pixel
     sed_test = [1.380621250859944, 3.7808188648242655, 6.4110121622656484, 4.1580572596900751]
 
-    #SED,chi = FitPix(temp,mass,sed_test)
-    lam, k_amc = log_extrap('../Kappa/kappa_amc.dat') 
-    lam, k_mg2 = log_extrap('../Kappa/kappa_mg2sio4.dat')
+    lam, k_amc = log_extrap('Kappa/kappa_amc.dat') 
+    lam, k_mg2 = log_extrap('Kappa/kappa_mg2sio4.dat')
 
-
-    # Let's suppose that we have an sed that looks like:
-    #test_cold_temp = 25 ; test_cold_mass = 5e-5; test_warm_mass = 1e-6; test_warm_temp = 145
     area = pixarea('../Final_Files/24/Final_24_SNR_CR_Prnd.fits') 
-    #test_cold_component = np.asarray(ModBB(k_amc,area,[24,70,100,160],test_cold_temp,test_cold_mass)).transpose()
-    #test_warm_component = np.asarray(ModBB(k_mg2,area,[24,70,100,160],test_warm_temp,test_warm_mass)).transpose()
-    #test_sed = test_cold_component + test_warm_component
 
     temp = np.arange(2,100,1) # Kelvin
 
@@ -346,39 +318,13 @@ if test:
     mass = 10**np.arange(-6,-2,0.1) 
     wmass = 10**np.arange(-8,-3,0.1)
 
-    #temp = np.asarray([35])
-    #mass = np.asarray([6.309e-4])
-    #wmass = np.asarray([1.57e-7])
-
     tempv,massv,wmassv = np.meshgrid(temp,mass,wmass)
 
     planck = {}
     
-    """
-    stepLength = len(lam)
-    for i in range(stepLength):
-        print("Working on step: "+str(i)+" of "+str(stepLength))
-        # Calculate B_nu with the un-meshgridded temperatures
-        # Should return a 1-D array of B_nu values corresponding to lam[i]
-        b = B_nu(lam[i], temp)
 
-        # Next we need to get the B_nu values into the proper shape to match
-        # the shape of M_ (which has been meshgridded).
-        # So we mesh grid the B_nu values with the un-meshgridded M and wM,
-        # which should give the same shape as above (since b now has the 
-        # same shape as T).
-        bMeshGridded, junk, junk = np.meshgrid(b, mass, wmass)
-
-        # Insert value into dictionary.
-        planck[lam[i]] = B_nu(lam[i],tempv)
-
-    """
-
-    #coldTemp, warmTemp, coldMass, warmMass, coldKappa, warmKappa,lam,area,measured_sed,PlanckDict
     sed, wsed,csed,t, m, wm, chi = CalculateBestSed(temp, 145, mass, wmass,k_amc, k_mg2, lam, area, sed_test,planck)
-    #return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, best_error
     plt.figure(1)
-    #plt.scatter([24,70,100,160], test_sed)
     plt.scatter([24,70,100,160], sed_test)
     plt.plot(lam,sed)
     print(("Temp {} Mass {} WarmMass {} ").format(t,m,wm))
