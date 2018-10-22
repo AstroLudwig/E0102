@@ -1,10 +1,10 @@
 # -*- Copyright (c) 2018, Bethany Ann Ludwig, All rights reserved. -*-
 """
 NAME:
-    Boot Strap
+	Boot Strap
 PURPOSE:
-    Solve for a scale factor between 70 micron modeled background and both 100 and 160 micron images.
-    Create a new modeled background and subtract from remnant.
+	Solve for a scale factor between 70 micron modeled background and both 100 and 160 micron images.
+	Create a new modeled background and subtract from remnant.
 KNOWN PROBLEM:
 	Welcome to the joys of cross platform development. reproject_exact blew up my windows computer but 
 	appears to run fine on ubuntu. If getting an insane infite loop when running this code then regrid 
@@ -15,7 +15,7 @@ sys.path.insert(0, '../../Convolve_Regrid')
 
 from astropy.io import fits
 import numpy as np 
-from astropy import wcs
+from astropy.wcs import WCS
 import matplotlib.pyplot as plt 
 from scipy import stats
 
@@ -27,17 +27,17 @@ import prune
 ####################
 #     SWITCHES     #
 ####################
-
+plt_MedianAdjustRegionSelection = True
 # Plot pixel intensities in the original image
 # as a function of pixel intensities in the modeled background.
 # Fit a line to this data to use as the scale factor. 
-plt_linearFit = True
+plt_linearFit = False
 # Show the results of the SNR and the new modeled background
-plt_result = True
+plt_result = False
 plt_Histogram = False
 plt_FitRegion = False
-plt_subAnnulus = True
-
+plt_subAnnulus = False
+plt_save = True
 # Convolve and regrid 70 um modeled background
 # to whichever file you're using.
 # Doesn't need to be done more than once.
@@ -46,18 +46,17 @@ convolve_regrid = False
 # Fitting Switch
 Detection_Limited = False
 OverSubtracted_Region = True
-clip = False # Changes the range you're fitting. 
 
 # Annulus Size defined as 22 arcseconds from 
 # E0102 center out to some thickness.
 thickness = 40 #arcseconds
 
 # Image Switches 
-im100 = True
-im160 = False
+im100 = False
+im160 = True
 
 # Save File
-save = False
+save = True
 ##################################
 # File Handling and Convolutions #
 ##################################
@@ -71,8 +70,7 @@ if im100:
 	conv_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_100umRes.fits'
 	regrid_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_100umRes_Resampled.fits'
 	sigma  = np.loadtxt('../../Sky_Remove/Sigma.txt')[2]
-	fname = '100um_70modeled'
-	sname = '100um_70modeled_ForceSlope'
+	sname = '100um/100um_70modeled'
 
 	# Arbitrary stuff for plotting
 	vmin=0;vmax=30 #bkgd
@@ -80,9 +78,8 @@ if im100:
 	vmin_sub = 4; vmax_sub= 30 # subtraction
 	xdim = [170,230]; ydim = [160,220]
 
-	# Region that is commonly over subtracted
-	sq_row = [200,200,200,201,201,201,202,202,202]
-	sq_col = [198,199,200,198,199,200,198,199,200]
+	#sq_row = [124,124,124,125,125,125,126,126,126]
+	#sq_col = [124,125,126,124,125,126,124,125,126]
 
 if im160:
 	print("Image is 160 Microns")
@@ -91,8 +88,7 @@ if im160:
 	conv_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_160umRes.fits'
 	regrid_sname = '../../Convolve_Regrid/Convolutions/70Bkgd_ext_20_tstep_3000_to_160umRes_Resampled.fits'
 	sigma  = np.loadtxt('../../Sky_Remove/Sigma.txt')[3]
-	fname = '160um_70modeled'
-	sname = '160um_70modeled_ForceSlope'
+	sname = '160um/160um_70modeled'
 	
 	# Arbitrary stuff for plotting
 	vmin=5;vmax=50 #bkgd
@@ -101,8 +97,8 @@ if im160:
 	xdim = [110,150]; ydim = [100,135]
 	
 	# Region that is commonly over subtracted
-	sq_row = [124,124,124,125,125,125,126,126,126]
-	sq_col = [124,125,126,124,125,126,124,125,126]
+	#sq_row = [124,124,124,125,125,125,126,126,126]
+	#sq_col = [124,125,126,124,125,126,124,125,126]
 
 if convolve_regrid: # Note that this gave me a lot of problems on windows but not on linux
 	Convolve.master_convolve(kern,bkgd,conv_sname)
@@ -112,6 +108,13 @@ bkgd = fits.open(regrid_sname)[0].data
 bkgdhdr = fits.open(regrid_sname)[0].header
 img = fits.open(im)[0].data
 hdr = fits.open(im)[0].header
+w = WCS(hdr)
+# Region that is commonly over subtracted
+# Used to just adjust median slope to a value
+# That makes this region have a median of 0. 
+ra = 16.014763979322012 
+dec = -72.02709660389223 
+SubRadius = 3.; # ArcSeconds
 
 ##################
 # Fitting Region #
@@ -185,12 +188,27 @@ if OverSubtracted_Region:
 	# create new subs
 	testMedians = []
 
+	# Save some time by getting coordinates for the test region outside of the loop.
+	newBkgd = np.copy(bkgd) * slopeRange[0]
+	newSub = np.copy(img)- newBkgd
+	
+	if im100:
+		# This method works best in 100. 
+		# Save coordinates to be transformed for 160.
+		testRegion_r, testRegion_c = np.where(np.isfinite(prune.SelectRegionalData(newSub,hdr,ra,dec,SubRadius)))
+		np.savetxt("NullRegionCoordinates.txt",w.all_pix2world(testRegion_c,testRegion_r,1))
+	if im160:
+		# Transform coordinates used for null region in 100
+		Ra,Dec = np.loadtxt("NullRegionCoordinates.txt")
+		testRegion_c, testRegion_r = w.all_world2pix(Ra,Dec,1)
+		testRegion_r = testRegion_r.astype(int); testRegion_c = testRegion_c.astype(int)
+		
 	for i in range(len(slopeRange)):
 		# Create new SNR based on an adjusted slope.
 		newBkgd = np.copy(bkgd) * slopeRange[i]
 		newSub = np.copy(img)- newBkgd
 		# Get the region that is usually very negative.
-		testRegion = newSub[sq_row,sq_col]
+		testRegion = newSub[testRegion_r,testRegion_c]
 		# Take the median 
 		testMedians.append(np.median(testRegion))
 
@@ -202,6 +220,8 @@ if OverSubtracted_Region:
 	
 	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
 	line = xvals * slope
+
+
 
 ################################
 #  Create Background and SNR   #
@@ -221,7 +241,12 @@ print(("Oversubtraction total: {}").format(np.nansum(histData[np.where(histData<
 ########################
 # Plotting and Testing #
 ########################
-
+if plt_MedianAdjustRegionSelection:
+	plt.figure()
+	plt.imshow(snr)
+	plt.ylim(ydim)
+	plt.xlim(xdim)
+	plt.scatter(testRegion_c,testRegion_r,c='red',s=0.1)
 if plt_linearFit:
 	# Plot image as a function of background.
 	# Fit a line using median as slope
@@ -279,7 +304,7 @@ if plt_subAnnulus:
 ##############
 
 if save:
-	fits.writeto(fname+'/'+sname+'_snr.fits',newsub,hdr,overwrite=True)
-	fits.writeto(fname+'/'+sname+'_bkgd.fits',newbkgd,hdr,overwrite=True)
-
+	fits.writeto(sname+'_snr.fits',newsub,hdr,overwrite=True)
+	fits.writeto(sname+'_bkgd.fits',newbkgd,hdr,overwrite=True)
+	print("Files saved.")
 plt.show()
