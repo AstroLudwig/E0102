@@ -27,36 +27,40 @@ import prune
 ####################
 #     SWITCHES     #
 ####################
-plt_MedianAdjustRegionSelection = True
+
+## For Testing 
+
 # Plot pixel intensities in the original image
 # as a function of pixel intensities in the modeled background.
 # Fit a line to this data to use as the scale factor. 
 plt_linearFit = False
+# View region we use to adjust the scale factor.
+plt_MedianAdjustRegionSelection = False
 # Show the results of the SNR and the new modeled background
-plt_result = False
+plt_SnrBkgd = False
+# Show Histogram of intensities in entire SNR and the negative intensities
 plt_Histogram = False
+# Show Annulus in Image and Background before Subtraction
 plt_FitRegion = False
+# Show subtracted Annulus and histogram of values in it.
 plt_subAnnulus = False
-plt_save = True
 # Convolve and regrid 70 um modeled background
 # to whichever file you're using.
 # Doesn't need to be done more than once.
 convolve_regrid = False
 
-# Fitting Switch
-Detection_Limited = False
-OverSubtracted_Region = True
+## For Code
 
 # Annulus Size defined as 22 arcseconds from 
 # E0102 center out to some thickness.
 thickness = 40 #arcseconds
 
 # Image Switches 
-im100 = False
-im160 = True
+im100 = True
+im160 = False
 
 # Save File
-save = True
+save = False
 ##################################
 # File Handling and Convolutions #
 ##################################
@@ -78,9 +82,6 @@ if im100:
 	vmin_sub = 4; vmax_sub= 30 # subtraction
 	xdim = [170,230]; ydim = [160,220]
 
-	#sq_row = [124,124,124,125,125,125,126,126,126]
-	#sq_col = [124,125,126,124,125,126,124,125,126]
-
 if im160:
 	print("Image is 160 Microns")
 	kern = '../../Convolve_Regrid/Kernels/Kernel_LoRes_PACS_70_to_PACS_160.fits'	
@@ -93,12 +94,8 @@ if im160:
 	# Arbitrary stuff for plotting
 	vmin=5;vmax=50 #bkgd
 	vmin_=10; vmax_=50 #img
-	vmin_sub = 4; vmax_sub= 30 # subtraction
+	vmin_sub = 0; vmax_sub= 10 # subtraction
 	xdim = [110,150]; ydim = [100,135]
-	
-	# Region that is commonly over subtracted
-	#sq_row = [124,124,124,125,125,125,126,126,126]
-	#sq_col = [124,125,126,124,125,126,124,125,126]
 
 if convolve_regrid: # Note that this gave me a lot of problems on windows but not on linux
 	Convolve.master_convolve(kern,bkgd,conv_sname)
@@ -131,97 +128,54 @@ med = np.nanmedian(Ratio)
 in_img = img[np.where(np.isfinite(imgShell))].flatten()
 in_bkgd = bkgd[np.where(np.isfinite(imgShell))].flatten()
 
-########################
-#  Detection Limited   #
-########################
-if Detection_Limited:
-	def FindLimitedPixels(data,level): 
-		# Returns sensitivity limited data, anything below X sigma is included.
-		# in the original image we are modeling
-		# Level is to adjust sensitivity (I.e. 2 sigma, 3 sigma, etc.)
-		row = []; column = [];
-		# We only care about pixels within the SNR
-		nImg = prune.Prune(data,hdr)
-		for i in range(np.shape(nImg)[0]):
-			for j in range(np.shape(nImg)[1]):
-				if np.isfinite(nImg[i,j]) and nImg[i,j] < sigma * level:
-					row.append(i); column.append(j)			
-		return data[row, column]
-	# We want to pick a slope that doesn't over compensate
-	# for extreme intensity values due to the nebula.
+#######################
+# Adjust Scale Factor #
+#######################
 
-	# Our test for a slope, will be one that gets the detection 
-	# limited pixels closest to zero.
+# We know there's a dark region of the SNR that is commonly oversubtracted in all images.
+# This hand defines that region as sq_row sq_column and then adjusts the slope to best
+# make that region 0. 
 
-	# Get an initial slope without adjusting for sensitivity limited pixels.
-	slope = np.nanmedian(np.copy(imgShell)/np.copy(bkgdShell))
-	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
-	line = xvals * slope
-	print("The initial slope based on the inverse median is: "+str(slope))
-	# Create a range of those slopes
-	slopeRange = np.arange(slope-5,slope+5,.1)
+# Starting slope
+slope = np.nanmedian(np.copy(imgShell)/np.copy(bkgdShell))
 
-	# Find the subtraction that gets the detection limited pixels closest to 0.
-	testResults = []; 
-	for i in range(len(slopeRange)):
-		newBkgd = np.copy(bkgd) * slopeRange[i]
-		newSnr = np.copy(img) - newBkgd
-		testResults.append(np.median(FindLimitedPixels(newSnr,2)))
-	find = np.where(np.isclose(testResults,0.,atol=0.1))	
-	slope = slopeRange[find]
-	line = xvals * slope
-	print("Adjusting slope to account for intensity extremes. New slope is: "+str(slope))
+# Range of slopes based on starting slope
+slopeRange = np.arange(slope-5,slope+5,.01)
+# create new subs
+testMedians = []
 
-########################
-#  Detection Limited   #
-########################
-if OverSubtracted_Region:
-	# We know there's a dark region of the SNR that is commonly oversubtracted in all images.
-	# This hand defines that region as sq_row sq_column and then adjusts the slope to best
-	# make that region 0. 
+# Save some time by getting coordinates for the test region outside of the loop.
+newBkgd = np.copy(bkgd) * slopeRange[0]
+newSub = np.copy(img)- newBkgd
 
-	# Starting slope
-	slope = np.nanmedian(np.copy(imgShell)/np.copy(bkgdShell))
+if im100:
+	# This method works best in 100. 
+	# Save coordinates to be transformed for 160.
+	testRegion_r, testRegion_c = np.where(np.isfinite(prune.SelectRegionalData(newSub,hdr,ra,dec,SubRadius)))
+	np.savetxt("NullRegionCoordinates.txt",w.all_pix2world(testRegion_c,testRegion_r,1))
+if im160:
+	# Transform coordinates used for null region in 100
+	Ra,Dec = np.loadtxt("NullRegionCoordinates.txt")
+	testRegion_c, testRegion_r = w.all_world2pix(Ra,Dec,1)
+	testRegion_r = testRegion_r.astype(int); testRegion_c = testRegion_c.astype(int)
 
-	# Range of slopes based on starting slope
-	slopeRange = np.arange(slope-5,slope+5,.01)
-	# create new subs
-	testMedians = []
-
-	# Save some time by getting coordinates for the test region outside of the loop.
-	newBkgd = np.copy(bkgd) * slopeRange[0]
+for i in range(len(slopeRange)):
+	# Create new SNR based on an adjusted slope.
+	newBkgd = np.copy(bkgd) * slopeRange[i]
 	newSub = np.copy(img)- newBkgd
-	
-	if im100:
-		# This method works best in 100. 
-		# Save coordinates to be transformed for 160.
-		testRegion_r, testRegion_c = np.where(np.isfinite(prune.SelectRegionalData(newSub,hdr,ra,dec,SubRadius)))
-		np.savetxt("NullRegionCoordinates.txt",w.all_pix2world(testRegion_c,testRegion_r,1))
-	if im160:
-		# Transform coordinates used for null region in 100
-		Ra,Dec = np.loadtxt("NullRegionCoordinates.txt")
-		testRegion_c, testRegion_r = w.all_world2pix(Ra,Dec,1)
-		testRegion_r = testRegion_r.astype(int); testRegion_c = testRegion_c.astype(int)
-		
-	for i in range(len(slopeRange)):
-		# Create new SNR based on an adjusted slope.
-		newBkgd = np.copy(bkgd) * slopeRange[i]
-		newSub = np.copy(img)- newBkgd
-		# Get the region that is usually very negative.
-		testRegion = newSub[testRegion_r,testRegion_c]
-		# Take the median 
-		testMedians.append(np.median(testRegion))
+	# Get the region that is usually very negative.
+	testRegion = newSub[testRegion_r,testRegion_c]
+	# Take the median 
+	testMedians.append(np.median(testRegion))
 
-	# Find which slope makes that median closest to 0 and then use that slope.	
-	find = np.where(np.isclose(testMedians,0.,atol=0.1))
-	
-	slope = np.mean(slopeRange[find])
-	print(("New Slope: {} ").format(slope))
-	
-	xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
-	line = xvals * slope
+# Find which slope makes that median closest to 0 and then use that slope.	
+find = np.where(np.isclose(testMedians,0.,atol=0.1))
 
+slope = np.mean(slopeRange[find])
+print(("New Slope: {} ").format(slope))
 
+xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
+line = xvals * slope
 
 ################################
 #  Create Background and SNR   #
@@ -241,12 +195,6 @@ print(("Oversubtraction total: {}").format(np.nansum(histData[np.where(histData<
 ########################
 # Plotting and Testing #
 ########################
-if plt_MedianAdjustRegionSelection:
-	plt.figure()
-	plt.imshow(snr)
-	plt.ylim(ydim)
-	plt.xlim(xdim)
-	plt.scatter(testRegion_c,testRegion_r,c='red',s=0.1)
 if plt_linearFit:
 	# Plot image as a function of background.
 	# Fit a line using median as slope
@@ -256,11 +204,17 @@ if plt_linearFit:
 	plt.xlabel('Background Pixel Intensities')
 	plt.ylabel('Original Image Pixel Intensities')
 	plt.title("Annulus Intensity Ratio")
-if plt_result:
+if plt_MedianAdjustRegionSelection:
+	plt.figure()
+	plt.imshow(snr)
+	plt.ylim(ydim)
+	plt.xlim(xdim)
+	plt.scatter(testRegion_c,testRegion_r,c='red',s=0.1)
+if plt_SnrBkgd:
 	# Show the result
 	# subtraction and background
 	g, (ex,fx) = plt.subplots(1,2,sharey=True)
-	ex.imshow(newsub,vmin=vmin,vmax=vmax)
+	ex.imshow(newsub,vmin=vmin_sub,vmax=vmax_sub)
 	cfx=fx.imshow(newbkgd,vmin=vmin,vmax=vmax)
 	ex.set_xlim(xdim); ex.set_ylim(ydim)
 	fx.set_xlim(xdim); fx.set_ylim(ydim)
