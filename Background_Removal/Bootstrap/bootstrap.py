@@ -111,6 +111,8 @@ w = WCS(hdr)
 # That makes this region have a median of 0. 
 ra = 16.014763979322012 
 dec = -72.02709660389223 
+c = SkyCoord(ra=ra*u.degree,dec=dec*u.degree,frame='icrs')
+print("Null Region Center Coordinate: "+str(c.ra.hms)+str(c.dec))
 SubRadius = 3.; # ArcSeconds
 
 ##################
@@ -170,8 +172,9 @@ for i in range(len(slopeRange)):
 
 # Find which slope makes that median closest to 0 and then use that slope.	
 find = np.where(np.isclose(testMedians,0.,atol=0.1))
-
-slope = np.mean(slopeRange[find])
+newSlope = np.mean(slopeRange[find])
+print(("Adjust slope by {}%").format(100*(slope-newSlope)/slope))
+slope = newSlope
 print(("New Slope: {} ").format(slope))
 
 xvals = np.arange(np.nanmin(in_bkgd),np.nanmax(in_bkgd))
