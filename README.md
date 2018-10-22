@@ -41,5 +41,11 @@ The scale factor we solve for is based on the median of the ratio of an annulus 
   
 We adjust the scale factor to meet the condition that a region, which is generally over subtracted in each image, should ideally be close to zero with any negative intensities the result of noise in the image. We use the median of the ratio as an intial guess and then define a region, centered at RA, DEC = 1h 4m 3.54s -72d 01m 37.55s, with a radius of 3". This is about 4 to 9 pixels depending on the image. This corrects the median by 16% of the initial guess. This adjustment accounts for the fact that there is no constant temperature in the image and that high intensities may be over accounted for in the initial guess.
 ## SED Fitting
+### Image Prep
+Everything we've done until now has been data reduction, now we take our measurements. We first need to convolve and regrid everything to the lowest resolution, the 160 micron image. We also further reduce the data here by removing everything outside of a 22" radius from the center RA, DEC = 1h 4m 2.1s -72d 01m 52.5s. Files are saved under Final Files and will be used for futher plotting and fitting purposes.
+### Equations
+### Spectral Energy Distribution Fitting
+### Quantify Error with Chi Squared Confidence Intervals 
+### Spectral Energy Distribution Plotting
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It also contains code for plotting those images in Plot.py

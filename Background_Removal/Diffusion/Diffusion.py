@@ -19,8 +19,8 @@ homogenized_check = False # Check to see if things are changing
 check_mask = False # Check that mask is working.
 check_result = False # Plot background and subtraction
 save = True # Save
-f_24um = False
-f_70um = True
+f_24um = True
+f_70um = False
 #################
 # File Handling #
 #################
