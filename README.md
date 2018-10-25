@@ -44,18 +44,18 @@ We adjust the scale factor to meet the condition that a region, which is general
 ### Image Prep
 Everything we've done until now has been data reduction, now we take our measurements. We first need to convolve and regrid everything to the lowest resolution, the 160 micron image. We also further reduce the data here by removing everything outside of a 22" radius from the center RA, DEC = 1h 4m 2.1s -72d 01m 52.5s. Files are saved under Final Files and will be used for futher plotting and fitting purposes.
 ### Equations
-To fit our data to a Spectral Energy Distribution function we need a few equations and modules. 
-The black body equation is given by: 
-
-![equation](https://latex.codecogs.com/gif.latex?B_\nu(\nu,T)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT}-1})
-
+To fit our data to a Spectral Energy Distribution function we need a few equations and modules.  
 The modified black body equation is given by:
 
 ![equation](https://latex.codecogs.com/gif.latex?S_\lambda=\kappa_\lambda&space;\Sigma_d&space;B_\nu)
 
-More information about this equation including the derivation and units can be found at [Gordon,2014](https://arxiv.org/pdf/1406.6066.pdf). 
-The kappa variable refers to the emissivity of a dust grain and is dependent on the material and wavelength. Our values come from a table by [authors] but has a limited range at 104 microns. We extrapolate to 164 microns.
-The Sigma_dust variable is the dust surface mass density given by dust mass * solar mass / physical area. We calculate the physical area of a single pixel in square parsecs to use here. For our integrated solution we will use the area of a single pixel, but for our averaged solution we will use the total area of our supernova remnant.  
+More information about this equation including the derivation and units can be found at [Gordon, 2014](https://arxiv.org/pdf/1406.6066.pdf).  
+..* The kappa variable refers to the emissivity of a dust grain and is dependent on the material and wavelength. Our values come from a table by [authors] but has a limited range at 104 microns. We extrapolate to 164 microns. 
+..* The Sigma_dust variable is the dust surface mass density given by dust mass * solar mass / physical area. We calculate the physical area of a single pixel in square parsecs to use here. For our integrated solution we will use the area of a single pixel, but for our averaged solution we will use the total area of our supernova remnant.
+..*  The black body equation is given by: 
+
+![equation](https://latex.codecogs.com/gif.latex?B_\nu(\nu,T)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT}-1})
+
 To determine the error to consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
 
 ### Spectral Energy Distribution Fitting

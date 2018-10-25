@@ -19,7 +19,7 @@ generate = True
 generate_AMC = True
 generate_MG2 = False
 # Fit the entire remnant rather than pixel by pixel.
-generate_general = False
+generate_general = True
 # Fit only pixels that fall within a detection limit. 
 # If running for something other than 2 sigma will need to change n. 
 generate_limit = False
@@ -29,79 +29,67 @@ generate_nobkgderr = True
 # something other than the full map with cold AMC.  
 generate_chiMap = True
 
+plot_general = True
 ###########
 ## Files ##
 ###########
 # Insert files to get seds.
-files = ['../Final_Files/24/Final_24_SNR_CR_Prnd.fits','../Final_Files/70/Final_70_SNR_CR_Prnd.fits','../Final_Files/100/Final_100_SNR_CR_Prnd.fits','../Final_Files/160/160um_70modeledFS_prnd_snr.fits']
+files = ['../Final_Files/24/24_SNR_Convolve_Regrid_Prune.fits',
+         '../Final_Files/70/70_SNR_Convolve_Regrid_Prune.fits',
+         '../Final_Files/100/100_SNR_Convolve_Regrid_Prune.fits',
+         '../Final_Files/160/160_SNR_Prune.fits']
 
 ################
 # Kappa Ranges #
 ################
 # Extrapolate for entire kappa length.
-lam, k_amc = Eqs.log_extrap('../Kappa/kappa_amc.dat')
-lam, k_mg2 = Eqs.log_extrap('../Kappa/kappa_mg2sio4.dat')
+lam, k_amc = Eqs.log_extrap('Kappa/kappa_amc.dat')
+lam, k_mg2 = Eqs.log_extrap('Kappa/kappa_mg2sio4.dat')
 
 ####################
 # Parameter Ranges #
 ####################
 # Create a grid to do a fit
-# Temperature
-T = np.arange(2,70,1) # Kelvin
+
+Temperature = np.arange(2,70,1) # Kelvin
 # Fractional Mass of the Sun using Dex
 # Cold Mass
-M = 10**np.arange(-4,0.1,.1)
+ColdMass = 10**np.arange(-4,0.1,.1)
 # Warm Mass
-wM = 10**np.arange(-8,-3,.1)
-T_,M_,wM_ = np.meshgrid(T,M,wM)
+WarmMass = 10**np.arange(-8,-3,.1)
+T_,M_,wM_ = np.meshgrid(Temperature,ColdMass,WarmMass)
 
 
 #########################
 #    General Fitting    #
 #########################
-
-
-data = []; sums = []; areas = []; sed_means = []
+# Get SNR data, the physical area of each SNR, and the average pixel intensity
+data = []; Areas = np.zeros(4); AverageIntensities = np.zeros(4)
 for i in range(4):
-    sm, ar = Eqs.sed_avg(files[i])
+    AverageIntensity, Area = Eqs.AverageSED(files[i])
     data.append(fits.open(files[i])[0].data)
-    sums.append(np.nansum(fits.open(files[i])[0].data))
-    areas.append(ar.value)
-    sed_means.append(sm)
-
-sigma = Eqs.error(sed_means)
+    Areas[i] = Area.value
+    AverageIntensities[i] = AverageIntensity
+# Get the error associated with each intensity
+AverageError = Eqs.error(AverageIntensities)
 
 if generate_general:   
-    j,genArea = Eqs.sed_avg(files[0])
+    sed, wsed, csed, t, m, wm, chi = Eqs.CalculateBestSed(Temperature,ColdMass,WarmMass,k_amc,Areas[0],AverageIntensities)
+    #(coldTemp, coldMass, warmMass,coldKappa,area,measured_sed)
+    chiMappa = Eqs.CalculateChi(Temperature, ColdMass, WarmMass,k_amc,Areas[0],AverageIntensities)
+    np.savetxt("Sols/General_TotalSED.txt",sed); np.savetxt("Sols/General_WarmSED.txt",wsed); np.savetxt("Sols/General_ColdSED.txt",csed)
+    np.savetxt("Sols/General_TempMassWarmMassChi.txt",[t,m,wm,chi])
 
-    cold_kappa = k_amc
-
-    sed1, wsed1, csed1, t1, m1, wm1, chi1 = Eqs.CalculateBestSed(T,145,M,wM,cold_kappa,k_mg2,lam,genArea,sed_means)
-    print(t1,m1,wm1)
-    np.savetxt("Sols/General_TotalSED.txt",sed1); np.savetxt("Sols/General_WarmSED.txt",wsed1); np.savetxt("Sols/General_ColdSED.txt",csed1)
-    np.savetxt("Sols/General_TempMassWarmMassChi.txt",[t1,m1,wm1,chi1])
-
-    cold_kappa2 = k_mg2
-
-    sed2, wsed2, csed2, t2, m2, wm2, chi2 = Eqs.CalculateBestSed(T,145,M,wM,cold_kappa2,k_mg2,lam,genArea,sed_means)
-
-    np.savetxt("Sols/MG2_General_TotalSED.txt",sed2); np.savetxt("Sols/MG2_General_WarmSED.txt",wsed2); np.savetxt("Sols/MG2_General_ColdSED.txt",csed2)
-    np.savetxt("Sols/MG2_General_TempMassWarmMassChi.txt",[t2,m2,wm2,chi2])
-
-    if generate_nobkgderr:
-
-        sed, wsed, csed, t, m, wm, chi = Eqs.CalculateBestSedNoBkgd(T,145,M,wM,k_amc,k_mg2,lam,genArea,sed_means)
-        #(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam,area,measured_sed)
-        chiMappa = Eqs.CalculateChiNoBkgd(T, 145, M, wm,k_amc, k_mg2,lam,genArea,sed_means)
-        np.savetxt("Sols/BkgdErrRemovd_General_TotalSED.txt",sed); np.savetxt("Sols/BkgdErrRemovd_General_WarmSED.txt",wsed); np.savetxt("Sols/BkgdErrRemovd_General_ColdSED.txt",csed)
-        np.savetxt("Sols/BkgdErrRemovd_General_TempMassWarmMassChi.txt",[t,m,wm,chi])
-
-        a,b = np.where(np.isclose(chiMappa,chi,atol=0.1))
-        print("Chi Squared Width is "+str(len(a)))
+    a,b = np.where(np.isclose(chiMappa,chi,atol=0.1))
+    print("Chi Squared Width is "+str(len(a)))
+if plot_general:
+    plt.figure()
+    plt.scatter([24,70,100,160],AverageIntensities)
+    plt.plot(sed)    
 #########################
 #    Pixel by Pixel     #
 #########################
-
+"""
 pix_int = []; # 4 Value Intensity Array
 pix_area = Eqs.pixarea(files[0]) # Any file could work all the areas and dimensions are the same.
 
@@ -246,4 +234,5 @@ if generate_nobkgderr:
     np.save("Sols/BkgdErrRemovd_Warm_SED_Map.npy", WarmSEDmap)
     np.save("Sols/BkgdErrRemovd_Cold_SED_Map.npy", ColdSEDmap)
     np.save("Sols/BkgdErrRemovd_Parameter_Chi_Map.npy",ParaChiMap)    
-
+"""
+plt.show()

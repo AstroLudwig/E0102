@@ -13,7 +13,6 @@ PURPOSE:
         Integrated SED
         Chi Squared Maps
 """
-from timeit import default_timer as timer
 import numpy as np
 from astropy import units as u
 from astropy.io import fits
@@ -146,8 +145,8 @@ def error(vals):
 ####################################
 
 # The measured SED is just an average of the intensities in the SNR
-# This returns that average and the physical area of the remnant. 
-def sed_avg(imgfile): 
+# This returns that average and the physical area of the remnant.  ## sed_avg previous name
+def AverageSED(imgfile): 
     img = fits.open(imgfile)[0].data
     look = np.where(np.isfinite(img))
     count = np.shape(look)[1]
@@ -159,11 +158,28 @@ def sed_avg(imgfile):
 #############
 # Fit SED   #
 #############
-
-def CalculateBestSed(coldTemp, warmTemp, coldMass, warmMass, coldKappa, warmKappa,lam,area,measured_sed):
-    startC = timer()
-
-
+"""
+NAME:
+   CalculateBestSed
+PURPOSE:
+   Generate SEDs given solutions for various Masses and Temperatures.
+INPUT:
+   coldTemp= 
+   warmTemp= 
+   coldMass=
+   warmMass=
+   coldKappa=
+   warmKappa=
+   lam= A list or array of wavelengths you want SED values at. 
+   area= Either the pixel area or the total area for integrated or averaged solutions respectively
+   measured_sed= A list or array of 4 values of averaged or individual pixel intensities at each wavelength
+OUTPUT: SED Solutions
+"""
+def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappa, area,measured_sed):
+    # Constants
+    warmTemp = 145 # K
+    lam, warmKappa = Eqs.log_extrap('../Kappa/kappa_mg2sio4.dat')
+    # Create Parameter Grid
     coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
 
     # Get the error based on input measured sed
@@ -188,7 +204,6 @@ def CalculateBestSed(coldTemp, warmTemp, coldMass, warmMass, coldKappa, warmKapp
         best_warm_mass = warmMass[bestIndices[0]][0] # change to scalar if using warm mass map
     else:
         best_warm_mass = warmMass
-
     # Create final SED for all wavelength
     warm_Sed = np.asarray(ModBB(warmKappa,area,lam,lam,warmTemp,best_warm_mass)).transpose()
     cold_Sed  = np.asarray(ModBB(coldKappa,area,lam,lam,best_cold_temp,best_cold_mass)).transpose()
@@ -200,92 +215,18 @@ def CalculateBestSed(coldTemp, warmTemp, coldMass, warmMass, coldKappa, warmKapp
     calc_sed = cold_sed + warm_sed 
     
     # Print Updates
-    #print("")
     print(("Measured SED: {}").format(measured_sed))
     print(("Calculated SED: {}").format(calc_sed))
     print(("Chi Value: {}").format(best_error))
-    endC = timer()
-    print(("Loading CalculatedBestSed Packages took: {} s").format(endC - startC))
-    return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, best_error
-
-def CalculateBestSedNoBkgd(coldTemp, warmTemp, coldMass, warmMass, coldKappa, warmKappa,lam,area,measured_sed):
-    startC = timer()
-
-
-    coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
-
-    # Get the error based on input measured sed
-    sigma = errorNoBkgd(measured_sed)
-
-    # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
-
-    coldComponentFinal = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,coldTempv,coldMassv)).transpose()
-    warmComponentFinal = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,warmMassv)).transpose()
-
-    # For  Cold AMC
-    sed_c_final = coldComponentFinal + warmComponentFinal
-    chi_final = (measured_sed - sed_c_final)**2 / (sigma)**2
-    chi_final_sumd = np.sum(chi_final, axis=3)
-    best_error = np.min(chi_final_sumd)
-    bestIndices = np.where(chi_final_sumd == best_error)
-
-    # bestIndices will be [cold_mass_index, cold_temp_index, warm_mass_index]
-    best_cold_temp = coldTemp[bestIndices[1]][0]
-    best_cold_mass = coldMass[bestIndices[2]][0]
-    if len(warmMass) > 1:
-        best_warm_mass = warmMass[bestIndices[0]][0] # change to scalar if using warm mass map
-    else:
-        best_warm_mass = warmMass
-    # Create final SED for all wavelength
-    warm_Sed = np.asarray(ModBB(warmKappa,area,lam,lam,warmTemp,best_warm_mass)).transpose()
-    cold_Sed  = np.asarray(ModBB(coldKappa,area,lam,lam,best_cold_temp,best_cold_mass)).transpose()
-    total_Sed = cold_Sed + warm_Sed 
-
-    # Create Calculated SED 
-    warm_sed = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,best_warm_mass)).transpose()
-    cold_sed  = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,best_cold_temp,best_cold_mass)).transpose()
-    calc_sed = cold_sed + warm_sed 
-    
-    # Print Updates
-    #print("")
-    print(("Measured SED: {}").format(measured_sed))
-    print(("Calculated SED: {}").format(calc_sed))
-    print(("Chi Value: {}").format(best_error))
-    endC = timer()
-    print(("Loading CalculatedBestSed Packages took: {} s").format(endC - startC))
     return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, best_error    
 
-def CalculateChi(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam,area,measured_sed):
-    startC = timer()
 
-  #  warmMass = np.asarray([1.9717e-7])
+def CalculateChi(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam,area,measured_sed):
     
     coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
 
     # Get the error based on input measured sed
     sigma = error(measured_sed)
-
-    # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
-
-    coldComponentFinal = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,coldTempv,coldMassv)).transpose()
-    warmComponentFinal = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,warmMassv)).transpose()
-
-    # For  Cold AMC
-    sed_c_final = coldComponentFinal + warmComponentFinal
-    chi_final = (measured_sed - sed_c_final)**2 / (sigma)**2
-    chi_final_sumd = np.sum(chi_final, axis=3)
-
-    return chi_final_sumd[:][:][0] 
-
-def CalculateChiNoBkgd(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam,area,measured_sed):
-    startC = timer()
-
-  #  warmMass = np.asarray([1.9717e-7])
-    
-    coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
-
-    # Get the error based on input measured sed
-    sigma = errorNoBkgd(measured_sed)
 
     # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
 
@@ -298,6 +239,7 @@ def CalculateChiNoBkgd(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKap
     chi_final_sumd = np.sum(chi_final, axis=3)
 
     return chi_final_sumd[:][:][0]     
+
 ###########
 # Testing #
 ###########
