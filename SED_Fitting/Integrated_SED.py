@@ -12,14 +12,18 @@ import Eqs
 ##############
 ## Switches ##
 ##############
+
+# Fit the entire remnant rather than pixel by pixel.
+generate_general = True
+plot_general = True
+
 # Pix by Pix
 # Creates Pixel Sed/Temp/Mass solutions and stores them in text file.
 generate = True  
 # Choose whether to evalute the cold dust composition as carbon or silicate.
 generate_AMC = True
 generate_MG2 = False
-# Fit the entire remnant rather than pixel by pixel.
-generate_general = True
+
 # Fit only pixels that fall within a detection limit. 
 # If running for something other than 2 sigma will need to change n. 
 generate_limit = False
@@ -29,7 +33,8 @@ generate_nobkgderr = True
 # something other than the full map with cold AMC.  
 generate_chiMap = True
 
-plot_general = True
+# Save Figures
+save = False
 ###########
 ## Files ##
 ###########
@@ -43,6 +48,7 @@ files = ['../Final_Files/24/24_SNR_Convolve_Regrid_Prune.fits',
 # Kappa Ranges #
 ################
 # Extrapolate for entire kappa length.
+kappa = ['Kappa/kappa_amc.dat','Kappa/kappa_mg2sio4.dat']
 lam, k_amc = Eqs.log_extrap('Kappa/kappa_amc.dat')
 lam, k_mg2 = Eqs.log_extrap('Kappa/kappa_mg2sio4.dat')
 
@@ -50,42 +56,54 @@ lam, k_mg2 = Eqs.log_extrap('Kappa/kappa_mg2sio4.dat')
 # Parameter Ranges #
 ####################
 # Create a grid to do a fit
-
-Temperature = np.arange(2,70,1) # Kelvin
+ColdTemp = np.arange(2,70,1) # Kelvin
 # Fractional Mass of the Sun using Dex
 # Cold Mass
 ColdMass = 10**np.arange(-4,0.1,.1)
 # Warm Mass
 WarmMass = 10**np.arange(-8,-3,.1)
-T_,M_,wM_ = np.meshgrid(Temperature,ColdMass,WarmMass)
-
 
 #########################
 #    General Fitting    #
 #########################
 # Get SNR data, the physical area of each SNR, and the average pixel intensity
-data = []; Areas = np.zeros(4); AverageIntensities = np.zeros(4)
+data = []; Areas = []; AverageIntensities = np.zeros(4)
 for i in range(4):
     AverageIntensity, Area = Eqs.AverageSED(files[i])
     data.append(fits.open(files[i])[0].data)
-    Areas[i] = Area.value
+    Areas.append(Area)
     AverageIntensities[i] = AverageIntensity
 # Get the error associated with each intensity
 AverageError = Eqs.error(AverageIntensities)
 
 if generate_general:   
-    sed, wsed, csed, t, m, wm, chi = Eqs.CalculateBestSed(Temperature,ColdMass,WarmMass,k_amc,Areas[0],AverageIntensities)
-    #(coldTemp, coldMass, warmMass,coldKappa,area,measured_sed)
-    chiMappa = Eqs.CalculateChi(Temperature, ColdMass, WarmMass,k_amc,Areas[0],AverageIntensities)
-    np.savetxt("Sols/General_TotalSED.txt",sed); np.savetxt("Sols/General_WarmSED.txt",wsed); np.savetxt("Sols/General_ColdSED.txt",csed)
-    np.savetxt("Sols/General_TempMassWarmMassChi.txt",[t,m,wm,chi])
+    total_sed, warm_sed, cold_sed, temp, cold_mass, warm_mass, chi_squared = Eqs.CalculateBestSed(ColdTemp,ColdMass,WarmMass,kappa[0],Areas[0],AverageIntensities)
+    chiMap = Eqs.CalculateChi(ColdTemp, ColdMass, WarmMass,kappa[0],Areas[0],AverageIntensities)
 
-    a,b = np.where(np.isclose(chiMappa,chi,atol=0.1))
-    print("Chi Squared Width is "+str(len(a)))
 if plot_general:
-    plt.figure()
-    plt.scatter([24,70,100,160],AverageIntensities)
-    plt.plot(sed)    
+    fig = plt.figure(figsize=(11,8))
+    plot = fig.add_subplot(111)
+    # Plot SEDs
+    plot.plot(lam,total_sed,color="#424186")
+    plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
+    plot.plot(lam,cold_sed,color="#23A883")
+    # Plot Measured Values
+    plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
+    # Plot Labels
+    plot.set_xlabel("Wavelength ($\mu m$)",size=18)
+    plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
+    plot.set_title("Average Spectral Energy Distribution",size=20)
+    plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
+    
+    plot.tick_params(axis='both', which='major', labelsize=16)
+    plot.tick_params(axis='both', which='minor', labelsize=14)
+    
+    plot.grid(color='white',linestyle='-')
+    plot.set_facecolor("#EAEAF2")
+
+    print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
+    if save:
+        plt.savefig("AverageSED.png")
 #########################
 #    Pixel by Pixel     #
 #########################

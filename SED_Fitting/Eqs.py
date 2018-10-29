@@ -22,6 +22,34 @@ import numexpr as ne
 
 test = False
 
+######################
+# Extrapolate Kappa  #
+######################
+
+# The first array is wavelength in microns (10^-6 meters) 
+# The second array is kappa in cm^2/g.
+def log_extrap(kappafile):
+# Admin
+    data = np.loadtxt(kappafile)
+    kappa = data[:,1]
+    lam = data[:,0]
+
+# Define straight line in log space. 
+    def pwrfn(x,a,b):
+        return a * np.power(x,b)
+# Choose a range to model off of, this is 580th element to the end.   
+    popt,pcov = curve_fit(pwrfn,lam[580:len(lam)],kappa[580:len(lam)])
+
+# Extrapolate
+    lam_extend = np.arange(103.9,164,0.1)
+    newk = np.log(popt[0]) + popt[1] * np.log(lam_extend)
+    newk_linear = np.exp(newk)
+# Merge Arrays 
+    full_lam = np.append(lam,lam_extend)
+    full_kappa = np.append(kappa,newk_linear)
+
+    return full_lam,full_kappa    
+
 ####################
 # Planck Function  #
 ####################
@@ -51,49 +79,23 @@ def B_nu(wav,temp):
 
 # Modified Single Temperature Black Body equation
 
-def ModBB(kappa_arr,area,wav,lam,Temp,Mass):
+def ModBB(kappa_arr,area,Temp,Mass):
     M_sun = const.M_sun.cgs
-    # If you want the ModBB solution for multiple wavelengths.
-    if type(wav) == list or type(wav) == np.ndarray:
-        Ans = []
-        for i in range(len(wav)):
-            kappa = kappa_arr[np.where(np.isclose(lam,wav[i]))[0][0]] * u.cm * u.cm / u.g
-            E = Mass * M_sun / area
-            B = B_nu(wav[i], Temp)
-            ans = kappa * E * B 
-            if ans.unit != "MJy/sr":
-                print(("Warning, ModBB units = {}").format(ans.unit))
-            Ans.append((ans).value) 
+    Solutions = []
+    lam, kappa = log_extrap(kappa_arr)
+    for i in range(len(lam)):
+        AbsorptionCrossSection = kappa[i] * u.cm * u.cm / u.g
+        SigmaDust = Mass * M_sun / area
+        Planck = B_nu(lam[i], Temp)
+        Answer = AbsorptionCrossSection * SigmaDust * Planck 
+        Solutions.append((Answer).value)
 
-    return np.asarray(Ans  )
+        # Flag if the units are off
+        if Answer.unit != "MJy/sr":
+            print(("Warning, ModBB units = {}").format(ans.unit))
+         
 
-######################
-# Extrapolate Kappa  #
-######################
-
-# The first array is wavelength in microns (10^-6 meters) 
-# The second array is kappa in cm^2/g.
-def log_extrap(kappafile):
-# Admin
-    data = np.loadtxt(kappafile)
-    kappa = data[:,1]
-    lam = data[:,0]
-
-# Define straight line in log space. 
-    def pwrfn(x,a,b):
-        return a * np.power(x,b)
-# Choose a range to model off of, this is 580th element to the end.   
-    popt,pcov = curve_fit(pwrfn,lam[580:len(lam)],kappa[580:len(lam)])
-
-# Extrapolate
-    lam_extend = np.arange(103.9,164,0.1)
-    newk = np.log(popt[0]) + popt[1] * np.log(lam_extend)
-    newk_linear = np.exp(newk)
-# Merge Arrays 
-    full_lam = np.append(lam,lam_extend)
-    full_kappa = np.append(kappa,newk_linear)
-
-    return full_lam,full_kappa    
+    return np.asarray(Solutions)
 
 ################
 # Pixel Area   #
@@ -154,7 +156,17 @@ def AverageSED(imgfile):
     pix_area = pixarea(imgfile)     
     area = (pix_area * count).to(u.cm*u.cm)
     return avg,area 
-
+########################################
+# Locate Observed Wavelength Features  #
+########################################
+# If you need indexes where observed wavelengths match lambda
+# This isn't currently being called but is left in the code in
+# Case lambda needs to vary in the future.
+def GetObservationIndex(Lambda):
+    ObservedWavelengths = [24,70,100,160]; index = []
+    for i in range(4):
+        index.append(np.where(np.isclose(Lambda,ObservedWavelengths[i]))[0][0])
+    return index    
 #############
 # Fit SED   #
 #############
@@ -164,65 +176,64 @@ NAME:
 PURPOSE:
    Generate SEDs given solutions for various Masses and Temperatures.
 INPUT:
-   coldTemp= 
-   warmTemp= 
-   coldMass=
-   warmMass=
-   coldKappa=
-   warmKappa=
-   lam= A list or array of wavelengths you want SED values at. 
+   coldTemp= 1D Array of Parameters
+   warmTemp= 145 K in most cases (Karin, 2009)
+   coldMass= 1D Array of Parameters
+   warmMass= 1D Array of Parameters
+   coldKappaFile= String for which kappa composition file you want to fit the cold dust to. 
    area= Either the pixel area or the total area for integrated or averaged solutions respectively
    measured_sed= A list or array of 4 values of averaged or individual pixel intensities at each wavelength
 OUTPUT: SED Solutions
 """
-def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappa, area,measured_sed):
+def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_sed):
     # Constants
     warmTemp = 145 # K
-    lam, warmKappa = Eqs.log_extrap('../Kappa/kappa_mg2sio4.dat')
+    warmKappaFile = 'Kappa/kappa_mg2sio4.dat'
+    lam, warmKappa = log_extrap(warmKappaFile)
     # Create Parameter Grid
     coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
 
     # Get the error based on input measured sed
     sigma = error(measured_sed)
+    # Solve for Cold Dust Component
+    coldComponent = np.asarray(ModBB(coldKappaFile,area,coldTempv,coldMassv)).transpose()
+    # Fixing warm component based on evidence from Sandstrom 2009
+    warmComponent = np.asarray(ModBB(warmKappaFile,area,warmTemp,warmMassv)).transpose()
+    # Put warm and cold together 
+    totalSED = coldComponent + warmComponent
+    # The numbers are locations that match up to 24, 70, 100, 160
+    # For information on how they are calculated see GetObservationIndex
+    index = GetObservationIndex(lam)
+    totalSED = totalSED[:,:,:,index]
+    # Calculate the Error and Determine where it is Lowest.
+    chiSquare = (measured_sed - totalSED)**2 / (sigma)**2
 
-    # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
+    chiSquareSum = np.sum(chiSquare, axis=3)
+    bestError = np.min(chiSquareSum)
+    bestIndices = np.where(chiSquareSum == bestError)
 
-    coldComponentFinal = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,coldTempv,coldMassv)).transpose()
-    warmComponentFinal = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,warmMassv)).transpose()
-
-    # For  Cold AMC
-    sed_c_final = coldComponentFinal + warmComponentFinal
-    chi_final = (measured_sed - sed_c_final)**2 / (sigma)**2
-    chi_final_sumd = np.sum(chi_final, axis=3)
-    best_error = np.min(chi_final_sumd)
-    bestIndices = np.where(chi_final_sumd == best_error)
-
-    # bestIndices will be [cold_mass_index, cold_temp_index, warm_mass_index]
+    # Get Solutions
     best_cold_temp = coldTemp[bestIndices[1]][0]
     best_cold_mass = coldMass[bestIndices[2]][0]
-    if len(warmMass) > 1:
-        best_warm_mass = warmMass[bestIndices[0]][0] # change to scalar if using warm mass map
-    else:
-        best_warm_mass = warmMass
-    # Create final SED for all wavelength
-    warm_Sed = np.asarray(ModBB(warmKappa,area,lam,lam,warmTemp,best_warm_mass)).transpose()
-    cold_Sed  = np.asarray(ModBB(coldKappa,area,lam,lam,best_cold_temp,best_cold_mass)).transpose()
-    total_Sed = cold_Sed + warm_Sed 
+    best_warm_mass = warmMass[bestIndices[0]][0]
 
-    # Create Calculated SED 
-    warm_sed = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,best_warm_mass)).transpose()
-    cold_sed  = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,best_cold_temp,best_cold_mass)).transpose()
-    calc_sed = cold_sed + warm_sed 
+    # Create final SED for all wavelengths
+    warm_Sed = np.asarray(ModBB(warmKappaFile,area,warmTemp,best_warm_mass)).transpose()
+    cold_Sed  = np.asarray(ModBB(coldKappaFile,area,best_cold_temp,best_cold_mass)).transpose()
+    total_Sed = cold_Sed + warm_Sed 
+    calc_sed = total_Sed[[index]]
     
     # Print Updates
     print(("Measured SED: {}").format(measured_sed))
     print(("Calculated SED: {}").format(calc_sed))
-    print(("Chi Value: {}").format(best_error))
-    return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, best_error    
+    print(("Chi Squared Value: {}").format(bestError))
+    return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, bestError   
 
 
-def CalculateChi(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam,area,measured_sed):
-    
+def CalculateChi(coldTemp,coldMass, warmMass,coldKappaFile,area,measured_sed):
+    # Constants 
+    warmTemp = 145 ; warmKappaFile = 'Kappa/kappa_mg2sio4.dat'
+    lam, warmKappa = log_extrap(warmKappaFile)
     coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
 
     # Get the error based on input measured sed
@@ -230,12 +241,13 @@ def CalculateChi(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam
 
     # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
 
-    coldComponentFinal = np.asarray(ModBB(coldKappa,area,[24,70,100,160],lam,coldTempv,coldMassv)).transpose()
-    warmComponentFinal = np.asarray(ModBB(warmKappa,area,[24,70,100,160],lam,warmTemp,warmMassv)).transpose()
+    coldComponentFinal = np.asarray(ModBB(coldKappaFile,area,coldTempv,coldMassv)).transpose()
+    warmComponentFinal = np.asarray(ModBB(warmKappaFile,area,warmTemp,warmMassv)).transpose()
 
     # For  Cold AMC
     sed_c_final = coldComponentFinal + warmComponentFinal
-    chi_final = (measured_sed - sed_c_final)**2 / (sigma)**2
+    index = GetObservationIndex(lam)
+    chi_final = (measured_sed - sed_c_final[:,:,:,index])**2 / (sigma)**2
     chi_final_sumd = np.sum(chi_final, axis=3)
 
     return chi_final_sumd[:][:][0]     
@@ -244,30 +256,39 @@ def CalculateChi(coldTemp, warmTemp, coldMass, warmMass,coldKappa, warmKappa,lam
 # Testing #
 ###########
 if test: 
-    # Ensure that SED code will accurately predict it's own measurements.
+    # Ensure that this SED code will accurately predict its own measurements.
+    FixedWarmMass = 4e-5; FixedWarmTemp = 145
+    FixedColdMass = .1  ; FixedColdTemp = 30
+
     import matplotlib.pyplot as plt
-    # From some pixel
-    sed_test = [1.380621250859944, 3.7808188648242655, 6.4110121622656484, 4.1580572596900751]
 
-    lam, k_amc = log_extrap('Kappa/kappa_amc.dat') 
-    lam, k_mg2 = log_extrap('Kappa/kappa_mg2sio4.dat')
+    coldKappaFile = 'Kappa/kappa_amc.dat'
+    warmKappaFile = 'Kappa/kappa_mg2sio4.dat'
 
-    area = pixarea('../Final_Files/24/Final_24_SNR_CR_Prnd.fits') 
+    lam, k_amc = log_extrap(coldKappaFile) 
+    NotRequired, Area = AverageSED('../Final_Files/24/24_SNR_Convolve_Regrid_Prune.fits')
 
-    temp = np.arange(2,100,1) # Kelvin
-
-    # Fractional Mass of the Sun using Dex
-    mass = 10**np.arange(-6,-2,0.1) 
+    # Create Parameter Space
+    temp = np.arange(2,70,1) # Kelvin
+    mass = 10**np.arange(-4,0.1,0.1) 
     wmass = 10**np.arange(-8,-3,0.1)
 
-    tempv,massv,wmassv = np.meshgrid(temp,mass,wmass)
+    # Get Fake Observations
+    index = GetObservationIndex(lam)
+    warm_Sed = np.asarray(ModBB(warmKappaFile,Area,FixedWarmTemp,FixedWarmMass)).transpose()
+    cold_Sed  = np.asarray(ModBB(coldKappaFile,Area,FixedColdTemp,FixedColdMass)).transpose()
+    total_Sed = cold_Sed + warm_Sed 
+    calc_sed = total_Sed[[index]]
 
-    planck = {}
+    # Try to Get Back Fixed Input
+    sed, wsed,csed,t, m, wm, chi = CalculateBestSed(temp, mass, wmass,'Kappa/kappa_amc.dat',Area, calc_sed)
     
-
-    sed, wsed,csed,t, m, wm, chi = CalculateBestSed(temp, 145, mass, wmass,k_amc, k_mg2, lam, area, sed_test,planck)
+    # Plot 
     plt.figure(1)
-    plt.scatter([24,70,100,160], sed_test)
+    plt.scatter([24,70,100,160], calc_sed)
     plt.plot(lam,sed)
     print(("Temp {} Mass {} WarmMass {} ").format(t,m,wm))
     plt.show()
+
+
+
