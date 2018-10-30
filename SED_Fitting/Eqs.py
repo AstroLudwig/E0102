@@ -250,7 +250,13 @@ def CalculateChi(coldTemp,coldMass, warmMass,coldKappaFile,area,measured_sed):
     chi_final = (measured_sed - sed_c_final[:,:,:,index])**2 / (sigma)**2
     chi_final_sumd = np.sum(chi_final, axis=3)
 
-    return chi_final_sumd[:][:][0]     
+    # Generalize so the warm mass could be fixed
+    if type(warmMass) == np.float64 or type(coldTemp) == np.float64 or type(coldMass) == np.float64:
+        chi_map = chi_final_sumd[:][:][0]   
+        print("Fixed Variable")
+    else:
+        chi_map = chi_final_sumd  
+    return chi_map
 
 ###########
 # Testing #
