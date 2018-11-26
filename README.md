@@ -62,6 +62,6 @@ To determine the error to consider during our fit we take a calibration error of
 The Averaged_SED and Integrated_SED files are similar in that they use the same equations and chi squared fit, found in Eqs, but the difference is on whether we are fitting a single mean value in each image or fitting each pixel.  
 ### Quantify Error with Chi Squared Confidence Intervals 
 During SED Fitting, we save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%. We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
-![Table](https://imgur.com/UQqtGyG)
+![Table](https://imgur.com/UQqtGyG.png)
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.
