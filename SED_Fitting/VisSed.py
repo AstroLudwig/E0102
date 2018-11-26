@@ -157,29 +157,6 @@ if use_noBkgdErr:
 # Plot   #
 ##########
 
-if plot_general:
-
-	fig = plt.figure(figsize=(11,8))
-
-	plot = fig.add_subplot(111)
-	plot.plot(lam,Gen_TSed,color="#424186")
-	plot.plot(lam,Gen_WSed,color="#84D44B",ls='dashed') 
-	plot.plot(lam,Gen_CSed,color="#23A883")
-	plot.errorbar(wv,sed_means,yerr=Eqs.error(sed_means),marker='o',linestyle='none',color="black")#"#84D44B")
-	plot.set_xlabel("Wavelength ($\mu m$)",size=18)
-	plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
-	plot.set_title(("Average Spectral Energy Distribution (SED)\n").format(int(Gen_Stats[0]),Gen_Stats[1],Gen_Stats[2],Gen_Stats[3]),size=20)
-	plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
-	
-	plot.tick_params(axis='both', which='major', labelsize=16)
-	plot.tick_params(axis='both', which='minor', labelsize=14)
-	
-	plot.grid(color='white',linestyle='-')
-	plot.set_facecolor("#EAEAF2")
-
-	print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} ChiSqrd {} ").format(int(Gen_Stats[0]),Gen_Stats[1],Gen_Stats[2],Gen_Stats[1]+Gen_Stats[2],Gen_Stats[3]))
-	if save:
-		plt.savefig("AverageSED.png")
 if plot_pix:
 
 	f, (ax,bx) = plt.subplots(1,2)

@@ -10,14 +10,14 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt 
 import Eqs
-
+from mpl_colormap_tools import truncate_cmap
 
 ##############
 ## Switches ##
 ##############
 # Plot Figures
 plot = False
-plot_ChiSquaredConfidence = False
+plot_ChiSquaredConfidence = True
 # Save Figures
 save = False
 ###########
@@ -63,8 +63,41 @@ AverageError = Eqs.error(AverageIntensities)
 
  # Do the fit
 total_sed, warm_sed, cold_sed, temp, cold_mass, warm_mass, chi_squared = Eqs.CalculateBestSed(ColdTemp,ColdMass,WarmMass,kappa[0],Areas[0],AverageIntensities)
-# Get the chi map
-chiMap = Eqs.CalculateChi(ColdTemp, ColdMass, warm_mass,kappa[0],Areas[0],AverageIntensities)
+
+##############################
+#  Chi^2 Confidence Interval #
+##############################
+
+# Get the chi map holding one of the solutions constant.
+chiMap_holdWarmMass = Eqs.CalculateChi(ColdTemp, ColdMass, warm_mass,kappa[0],Areas[0],AverageIntensities)
+chiMap_holdColdMass = Eqs.CalculateChi(ColdTemp, cold_mass, WarmMass,kappa[0],Areas[0],AverageIntensities).transpose()
+chiMap_holdTemp = Eqs.CalculateChi(temp, ColdMass, WarmMass,kappa[0],Areas[0],AverageIntensities)
+
+FixedChiMaps = [chiMap_holdWarmMass,chiMap_holdColdMass,chiMap_holdTemp]
+# Allow all parameters to vary, getting the total chi map cube.
+chiCube = Eqs.CalculateChi(ColdTemp, ColdMass, WarmMass,kappa[0],Areas[0],AverageIntensities)
+
+# 90% and 63%
+intervals = [2.71,2.3]
+
+
+## Find error intervals for 63% confidence
+row, column, Z = np.where(chiCube < chi_squared + intervals[1])
+self_width = 1
+# Measure chi width's based on how far from the minimum it can be. 
+# Max element - Min element + 1 (since there shouldn't be a 0 width, even 1 pixel has some width)
+# This is multiplied by the interval in parameter space and divided by 2 to give a plus minus error.
+# The interval is arbitrary so the array element values don't matter. Just want the width of a single parameter.
+# Temperature interval
+Temperature_Confidence = (np.max(row)-np.min(row)+ self_width) * (ColdTemp[50] - ColdTemp[49]) / 2
+# Cold Mass Interval
+ColdMass_Confidence = (np.max(column)-np.min(column)+ self_width) * (ColdMass[30] - ColdMass[29]) / 2
+# Warm Mass Interval
+WarmMass_Confidence = (np.max(Z)-np.min(Z)+ self_width) * (WarmMass[30] - WarmMass[29]) / 2
+print( (np.max(row)-np.min(row)+ self_width))
+print((np.max(column)-np.min(column)+ self_width))
+print((np.max(Z)-np.min(Z)+ self_width))
+print(Temperature_Confidence,ColdMass_Confidence,WarmMass_Confidence)
 ##################
 #    Plotting    #
 ##################
@@ -94,15 +127,32 @@ if plot:
         plt.savefig("AverageSED.png")
 
 if plot_ChiSquaredConfidence:
+
+    def ChiSquaredMap(Map,interval):
+        # Change everything outside the interval to NaN.
+        R,C = np.where(Map > chi_squared + interval)
+        Map[R,C] = np.nan 
+        return Map
+
     # This plots intervals while holding the warm mass solution constant.
     # Can create chi intervals without this requirement, but is trickier to plot.
-    f, axes = plt.subplots(1,3)
-    intervals = [6.63,2.71,2.3]; titles = ["99% Confidence","90% Confidence","68% Confidence"]
-    # 99 % -> 6.63, 90% -> 2.71, 68% -> 2.3
+    f, axes = plt.subplots(3,2)
+    #plt.style.use('ggplot')
+    titles = ["90% Confidence","68% Confidence"]
+    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0], np.where(np.isclose(WarmMass,warm_mass))[0][0], np.where(np.isclose(ColdMass,cold_mass))[0][0]]
+    physical_Y = [np.where(np.isclose(ColdTemp,temp))[0][0],np.where(np.isclose(ColdTemp,temp))[0][0],np.where(np.isclose(WarmMass,warm_mass))[0][0]]
+    ylabels = ["Temperature K","Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$"]
+    xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
+    # 90% -> 2.71, 68% -> 2.3
     for i in range(3):
-        axes[i].imshow(chiMap,vmin=0,vmax=chi_squared+intervals[i])
-        axes[i].scatter(np.where(np.isclose(ColdMass,cold_mass))[0][0],np.where(np.isclose(ColdTemp,temp))[0][0],s=5,c='r')
-
+        for j in range(2):
+            axes[i,j].imshow(ChiSquaredMap(FixedChiMaps[i],intervals[j]))#,cmap="flag")#,cmap=truncate_cmap(plt.cm.rainbow_r,n_min=40,n_max=220)) 
+            axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
+            axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
+            axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
+    axes[0,0].set_title("90% Confidence")
+    axes[0,1].set_title("68% Confidence")            
+"""
         axes[i].set_xlabel("Cold Dust Mass")
         axes[i].set_ylabel("Temperature")
         axes[i].set_title(titles[i])
@@ -115,5 +165,5 @@ if plot_ChiSquaredConfidence:
         axes[i].set_yticklabels(ColdTemp[Yticks])
         axes[i].set_ylim(17,47)
         axes[i].set_xlim(20,40)
-
+"""
 plt.show()
