@@ -159,7 +159,7 @@ if im160:
 	# Transform coordinates used for null region in 100
 	Ra,Dec = np.loadtxt("NullRegionCoordinates.txt")
 	testRegion_c, testRegion_r = w.all_world2pix(Ra,Dec,1)
-	testRegion_r = testRegion_r.astype(int); testRegion_c = testRegion_c.astype(int)
+	testRegion_r = np.round(testRegion_r).astype(int); testRegion_c = np.round(testRegion_c).astype(int)
 
 for i in range(len(slopeRange)):
 	# Create new SNR based on an adjusted slope.
