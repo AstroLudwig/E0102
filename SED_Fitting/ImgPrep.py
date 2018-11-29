@@ -30,8 +30,8 @@ plot_Prune = True
 
 # Get Final SNR Images from appropriate folders
 # Must run previous background removal steps first.
-f24 = '../Background_Removal/Diffusion/im24/snr24/24um_diff_3000_steps_snr.fits'
-f70 = '../Background_Removal/Diffusion/im70/snr70/70um_diff_3000_steps_snr.fits'
+f24 = '../Background_Removal/Diffusion/im24/snr24/24um_diff_1375_steps_snr.fits'
+f70 = '../Background_Removal/Diffusion/im70/snr70/70um_diff_3620_steps_snr.fits'
 f100 = '../Background_Removal/Bootstrap/100um/100um_70modeled_snr.fits'
 f160 = '../Background_Removal/Bootstrap/160um/160um_70modeled_snr.fits'
 

@@ -16,7 +16,7 @@ from mpl_colormap_tools import truncate_cmap
 ## Switches ##
 ##############
 # Plot Figures
-plot = False
+plot = True
 plot_ChiSquaredConfidence = True
 # Save Figures
 save = False
@@ -152,18 +152,5 @@ if plot_ChiSquaredConfidence:
             axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
     axes[0,0].set_title("90% Confidence")
     axes[0,1].set_title("68% Confidence")            
-"""
-        axes[i].set_xlabel("Cold Dust Mass")
-        axes[i].set_ylabel("Temperature")
-        axes[i].set_title(titles[i])
-        # Fix some wonkiness with the axis labels
-        Yticks = [0,5,10,15,20,25,30,35,40,45,50,55,60,65]
-        Xticks = [0,5,10,15,20,25,30,35,40]
-        axes[i].set_xticks(Xticks)
-        axes[i].set_xticklabels(ColdMass[Xticks])
-        axes[i].set_yticks(Yticks)
-        axes[i].set_yticklabels(ColdTemp[Yticks])
-        axes[i].set_ylim(17,47)
-        axes[i].set_xlim(20,40)
-"""
+
 plt.show()
