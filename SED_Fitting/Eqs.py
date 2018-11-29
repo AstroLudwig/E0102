@@ -192,7 +192,6 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     lam, warmKappa = log_extrap(warmKappaFile)
     # Create Parameter Grid
     coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
-
     # Get the error based on input measured sed
     sigma = error(measured_sed)
     # Solve for Cold Dust Component
@@ -205,12 +204,13 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     # For information on how they are calculated see GetObservationIndex
     index = GetObservationIndex(lam)
     totalSED = totalSED[:,:,:,index]
+    
     # Calculate the Error and Determine where it is Lowest.
     chiSquare = (measured_sed - totalSED)**2 / (sigma)**2
-
-    chiSquareSum = np.sum(chiSquare, axis=3)
-    bestError = np.min(chiSquareSum)
-    bestIndices = np.where(chiSquareSum == bestError)
+    # Create Chi Squared Cube for measuring confidence intervals
+    chiSquareCube = np.sum(chiSquare, axis=3)
+    bestError = np.min(chiSquareCube)
+    bestIndices = np.where(chiSquareCube == bestError)
 
     # Get Solutions
     best_cold_temp = coldTemp[bestIndices[1]][0]
@@ -223,11 +223,13 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     total_Sed = cold_Sed + warm_Sed 
     calc_sed = total_Sed[[index]]
     
+
+
     # Print Updates
     print(("Measured SED: {}").format(measured_sed))
     print(("Calculated SED: {}").format(calc_sed))
     print(("Chi Squared Value: {}").format(bestError))
-    return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, bestError   
+    return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, bestError,chiSquareCube  
 
 
 def CalculateChi(coldTemp,coldMass, warmMass,coldKappaFile,area,measured_sed):
@@ -250,15 +252,15 @@ def CalculateChi(coldTemp,coldMass, warmMass,coldKappaFile,area,measured_sed):
     chi_final = (measured_sed - sed_c_final[:,:,:,index])**2 / (sigma)**2
     chi_final_sumd = np.sum(chi_final, axis=3)
     # Generalize so the warm mass could be fixed
-    if type(warmMass) == np.float64: 
-        chi_map = chi_final_sumd[:][:][0]   
-        print("Fixed Variable")
-    elif type(coldTemp) == np.int64:
-        chi_map = chi_final_sumd[:,0,:]
-    elif type(coldMass) == np.float64:        
-        chi_map = chi_final_sumd[:,:,0]
-    else:
-        chi_map = chi_final_sumd  
+    # if type(warmMass) == np.float64: 
+    #     chi_map = chi_final_sumd[:][:][0]   
+    #     print("Fixed Variable")
+    # elif type(coldTemp) == np.int64:
+    #     chi_map = chi_final_sumd[:,0,:]
+    # elif type(coldMass) == np.float64:        
+    #     chi_map = chi_final_sumd[:,:,0]
+    # else:
+    chi_map = chi_final_sumd  
     return chi_map
 
 ###########

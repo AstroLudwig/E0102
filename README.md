@@ -42,7 +42,7 @@ The scale factor we solve for is based on the median of the ratio of an annulus 
 ![equation](https://latex.codecogs.com/gif.latex?100&space;\mu&space;m&space;\text{&space;Background}=&space;70&space;\mu&space;m&space;\text{&space;Background}&space;\times&space;\Big(\frac{100\mu\text{m&space;Image}&space;}{70&space;\mu&space;m\text{&space;Background}&space;}\Big)_{Med})
   
 We adjust the scale factor to meet the condition that a region, which is generally over subtracted in each image, should ideally be close to zero with any negative intensities the result of noise in the image. We use the median of the ratio as an intial guess and then define a region, centered at RA, DEC = 1h 4m 3.54s -72d 01m 37.55s, with a radius of 3". This is about 4 to 9 pixels depending on the image. This corrects the median by 16% of the initial guess. This adjustment accounts for the fact that there is no constant temperature in the image and that high intensities may be over accounted for in the initial guess.
-## SED Fitting
+## Spectral Energy Distribution (SED) Fitting
 ### Image Prep
 Everything we've done until now has been data reduction, now we take our measurements. We first need to convolve and regrid everything to the lowest resolution, the 160 micron image. We also further reduce the data here by removing everything outside of a 22" radius from the center RA, DEC = 1h 4m 2.1s -72d 01m 52.5s. Files are saved under Final Files and will be used for futher plotting and fitting purposes.
 ### Equations
@@ -58,10 +58,15 @@ More information about this equation including the derivation and units can be f
 
 To determine the error to consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
 
-### Spectral Energy Distribution Fitting
-The Averaged_SED and Integrated_SED files are similar in that they use the same equations and chi squared fit, found in Eqs, but the difference is on whether we are fitting a single mean value in each image or fitting each pixel.  
+### Average SED
+Averaged_SED takes the mean value of the pixel intensities in the subtracted remnant at 24, 70, 100, and 160 microns and fits an SED to those values. A chi squared confidence cube in parameter space is calculated to determine the interval for which the solution could be correct. The result is a cold dust mass of  
+
+
+### Integrated SED
+Integrated_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The result is a 
+
 ### Quantify Error with Chi Squared Confidence Intervals 
-During SED Fitting, we save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%. We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
+During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
 ![Table](https://imgur.com/UQqtGyG.png)
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.
