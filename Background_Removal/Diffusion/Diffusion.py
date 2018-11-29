@@ -19,8 +19,8 @@ homogenized_check = False # Check to see if things are changing
 check_mask = False # Check that mask is working.
 check_result = False # Plot background and subtraction
 save = True # Save
-f_24um = True
-f_70um = False
+f_24um = False
+f_70um = True
 #################
 # File Handling #
 #################
@@ -37,6 +37,7 @@ if f_24um:
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
 if f_70um:
+    print('Diffusing 70 microns')
     # Original, Median Removed File
     f = fits.open('../../Sky_Remove/Median_Removed/70um_medianRemoved.fits')
     # Import mask coordinates
