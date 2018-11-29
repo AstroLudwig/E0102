@@ -18,9 +18,10 @@ from astropy.wcs import WCS
 homogenized_check = False # Check to see if things are changing
 check_mask = False # Check that mask is working.
 check_result = False # Plot background and subtraction
-save = True # Save
+check_null_region = True # Print/Save the median value of the null region 
+save = False # Save
 f_24um = False
-f_70um = True
+f_70um = False
 #################
 # File Handling #
 #################
@@ -36,6 +37,7 @@ if f_24um:
     folder = 'im24/' #folder name for saving   
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
+    Nname = "Null_Means_24umDiff.txt"
 if f_70um:
     print('Diffusing 70 microns')
     # Original, Median Removed File
@@ -46,7 +48,13 @@ if f_70um:
     folder = 'im70/' #folder name for saving  
     data = f[0].data; hdr = f[0].header; wcs = WCS(hdr)
     x,y = np.round(wcs.all_world2pix(ra,dec,1))
-
+    Nname = "Null_Means_70umDiff.txt"
+# Get Null Region defined as region in all the snr that is generally dark
+# and easy to oversubtract. We'll want to stop the diffusion process
+# when that area is within some multiplicative factor of the noise. 
+Null_Ra,Null_Dec = np.loadtxt("../Bootstrap/NullRegionCoordinates.txt")
+Null_x,Null_y = wcs.all_world2pix(Null_Ra,Null_Dec,1)
+Null_x = np.round(Null_x).astype(int); Null_y = np.round(Null_y).astype(int)
 # Plot image and mask to make sure files are correct.
 if check_mask:
     plt.figure()
@@ -183,6 +191,12 @@ for t in range(1,maxNumberOfSteps+1):
         bx.set_xlim(190,320)
         bx.set_ylim(190,280)
 
+    # Check Null Region
+    if check_null_region:
+        print(np.mean(sub[Null_y,Null_x]))
+
+        with open(Nname, "a+") as myfile:
+            myfile.write(str(np.mean(sub[Null_y,Null_x]))+"\n")
     # Save
     if save:
         fits.writeto(folder+'snr'+um+'/'+um+'um_diff_'+str(t)+'_steps_snr.fits',sub,header=hdr,overwrite=True)
