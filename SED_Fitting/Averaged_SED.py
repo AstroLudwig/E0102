@@ -95,7 +95,7 @@ def ConfidenceInterval(interval):
     # Max element - Min element + 1 (since there shouldn't be a 0 width, even 1 pixel has some width)
     # This is multiplied by the interval in parameter space and divided by 2 to give a plus minus error.
     # The interval is arbitrary so the array element values don't matter. Just want the width of a single parameter.
-    row_WM, col_T, z_CM = np.where(chi_squared_cube < chi_squared + interval)
+    row_WM, col_T, z_CM = np.where(np.copy(chi_squared_cube) < (chi_squared + interval))
 
     # Meshgrid works in a weird way where a,b,c = np.meshgrid(a,b,c) doesn't give you a shape(a,b,c).
     # Instead it gives you a shape (b,a,c), so temperature doesn't correspond to row as I originally thought. 
@@ -150,10 +150,11 @@ if plot:
 if plot_ChiSquaredConfidence:
 
     def ChiSquaredMap(Map,interval):
+        Map = np.copy(Map)
         # Change everything outside the interval to NaN.
-        R,C = np.where(Map > chi_squared + interval)
+        R,C = np.where(Map > (chi_squared + interval))
         Map[R,C] = np.nan 
-        return Map
+        return np.copy(Map)
 
     # This plots intervals while holding one of the solutions constant.
     # The intervals aren't calculated like this, they allow all parameters to vary
@@ -161,28 +162,32 @@ if plot_ChiSquaredConfidence:
     
     f, axes = plt.subplots(3,2)
     
-    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0], np.where(np.isclose(WarmMass,warm_mass))[0][0], np.where(np.isclose(ColdMass,cold_mass))[0][0]]
-    physical_Y = [np.where(np.isclose(ColdTemp,temp))[0][0],np.where(np.isclose(ColdTemp,temp))[0][0],np.where(np.isclose(WarmMass,warm_mass))[0][0]]
+    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
+                    np.where(np.isclose(ColdTemp,temp))[0][0],
+                        np.where(np.isclose(ColdMass,cold_mass))[0][0]]
+
+    physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
+                    np.where(np.isclose(WarmMass,warm_mass))[0][0],
+                        np.where(np.isclose(ColdTemp,temp))[0][0]]
     
     titles = ["68.3% Confidence","95.4% Confidence"]
-    ylabels = ["Temperature K","Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$"]
+    ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
     xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
     
     # Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
-    chi_squared_slices = [chi_squared_cube[:,physical_Y[0],:],chi_squared_cube[:,:,physical_X[0]],chi_squared_cube[physical_X[1],:,:]]
-    print(np.shape(chi_squared_slices[0]))
+    chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
+                            np.copy(chi_squared_cube)[:,:,physical_X[0]],
+                                np.copy(chi_squared_cube)[physical_Y[0],:,:]]
+    
     for i in range(3):
         for j in range(2):
             img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
-            print(np.where(np.isfinite(img)))
             axes[i,j].imshow(img)
-    #         axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
-    #         axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
-    #         axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
+            axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
+            axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
+            axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
 
-    # axes[0,0].set_title(titles[0])
-    # axes[0,1].set_title(titles[1])            
-    # f, axes = plt.subplots(1,3)
-    # for i in range(3):
-    #     axes[i].imshow(chiSlices[i])
+    axes[0,0].set_title(titles[0])
+    axes[0,1].set_title(titles[1])            
+
 plt.show()

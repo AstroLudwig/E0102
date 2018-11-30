@@ -204,11 +204,12 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     # For information on how they are calculated see GetObservationIndex
     index = GetObservationIndex(lam)
     totalSED = totalSED[:,:,:,index]
-    
+
     # Calculate the Error and Determine where it is Lowest.
     chiSquare = (measured_sed - totalSED)**2 / (sigma)**2
     # Create Chi Squared Cube for measuring confidence intervals
     chiSquareCube = np.sum(chiSquare, axis=3)
+
     bestError = np.min(chiSquareCube)
     bestIndices = np.where(chiSquareCube == bestError)
 
@@ -230,38 +231,6 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     print(("Calculated SED: {}").format(calc_sed))
     print(("Chi Squared Value: {}").format(bestError))
     return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, bestError,chiSquareCube  
-
-
-def CalculateChi(coldTemp,coldMass, warmMass,coldKappaFile,area,measured_sed):
-    # Constants 
-    warmTemp = 145 ; warmKappaFile = 'Kappa/kappa_mg2sio4.dat'
-    lam, warmKappa = log_extrap(warmKappaFile)
-    coldTempv, coldMassv, warmMassv = np.meshgrid(coldTemp, coldMass, warmMass) 
-
-    # Get the error based on input measured sed
-    sigma = error(measured_sed)
-
-    # ModBB Parameters: (kappa_arr,area,wav,lam,Temp,Mass)
-
-    coldComponentFinal = np.asarray(ModBB(coldKappaFile,area,coldTempv,coldMassv)).transpose()
-    warmComponentFinal = np.asarray(ModBB(warmKappaFile,area,warmTemp,warmMassv)).transpose()
-
-    # For  Cold AMC
-    sed_c_final = coldComponentFinal + warmComponentFinal
-    index = GetObservationIndex(lam)
-    chi_final = (measured_sed - sed_c_final[:,:,:,index])**2 / (sigma)**2
-    chi_final_sumd = np.sum(chi_final, axis=3)
-    # Generalize so the warm mass could be fixed
-    # if type(warmMass) == np.float64: 
-    #     chi_map = chi_final_sumd[:][:][0]   
-    #     print("Fixed Variable")
-    # elif type(coldTemp) == np.int64:
-    #     chi_map = chi_final_sumd[:,0,:]
-    # elif type(coldMass) == np.float64:        
-    #     chi_map = chi_final_sumd[:,:,0]
-    # else:
-    chi_map = chi_final_sumd  
-    return chi_map
 
 ###########
 # Testing #
