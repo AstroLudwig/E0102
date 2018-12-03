@@ -232,6 +232,54 @@ def CalculateBestSed(coldTemp, coldMass, warmMass, coldKappaFile, area,measured_
     print(("Chi Squared Value: {}").format(bestError))
     return total_Sed, warm_Sed, cold_Sed, best_cold_temp, best_cold_mass, best_warm_mass, bestError,chiSquareCube  
 
+################
+# Evaluate Fit #
+################
+# Cold Mass and Warm Mass are on nonlinear parameter ranges so I need a way to measure the width of 
+# a pixel if I want to know the confidence interval
+def Linearize_DexRange(ParameterArray,index):
+    return 10**(np.log10(ParameterArray[0]) + np.abs(np.log10(ParameterArray[0])-np.log10(ParameterArray[1]))*index)
+def PixelWidth(ParameterArray,index):
+    return Linearize_DexRange(ParameterArray,index+0.5)-Linearize_DexRange(ParameterArray,index-0.5)
+
+## Find error intervals for some confidence level
+# Input the chi squared confidence interval (in our case, 1 ,4 , 9)
+# Input the chi squared cube calculated during the fit
+# Input the minimized chi squared value which chooses the solution
+# Input the parameter arrays in order to measure their width: ColdTemp, ColdMass,WarmMass
+
+# Output the confidence levels
+def ConfidenceInterval(interval,chi_squared_cube,chi_squared,ColdTemp,ColdMass,WarmMass): 
+    
+    self_width = 1
+    # Measure chi width's based on how far from the minimum it can be. 
+    # Max element - Min element + 1 (since there shouldn't be a 0 width, even 1 pixel has some width)
+    # This is multiplied by the interval in parameter space and divided by 2 to give a plus minus error.
+    # The interval is arbitrary so the array element values don't matter. Just want the width of a single parameter.
+    row_WM, col_T, z_CM = np.where(np.copy(chi_squared_cube) < (chi_squared + interval))
+
+    # Meshgrid works in a weird way where a,b,c = np.meshgrid(a,b,c) doesn't give you a shape(a,b,c).
+    # Instead it gives you a shape (b,a,c), so temperature doesn't correspond to row as I originally thought. 
+    # Temperature interval, this is linear so one pixel has a width of 1k
+    Temperature_Confidence = (np.max(col_T)-np.min(col_T)+ self_width) * (ColdTemp[50] - ColdTemp[49]) / 2
+    # Cold Mass Interval, The mass is more complicated because the parameter ranges are non linear. 
+    # Here we get an index range on possible solutions, measure the width of each index element and 
+    # sum them together.
+    ColdMass_Range = np.arange(np.min(z_CM),np.max(z_CM)+1)
+    ColdMass_Confidence = np.sum(PixelWidth(ColdMass,ColdMass_Range)) / 2
+    # Warm Mass Interval
+    WarmMass_Range = np.arange(np.min(row_WM),np.max(row_WM)+1)
+    WarmMass_Confidence = np.sum(PixelWidth(WarmMass,WarmMass_Range)) / 2
+
+    # Stats 
+    print("Temperature Elements in Interval: "+str((np.max(col_T)-np.min(col_T)+ self_width) ))
+    print("Cold Dust Mass Elements in Interval: "+str((np.max(z_CM)-np.min(z_CM)+ self_width)))
+    print("Warm Dust Mass Elements in Interval: "+str((np.max(row_WM)-np.min(row_WM)+ self_width)))
+    print("Temperature interval in K: "+str(Temperature_Confidence))
+    print("Cold Dust Mass interval in Solar Mass Fraction: "+str(ColdMass_Confidence))
+    print("Warm Dust Mass interval in Solar Mass Fraction: "+str(WarmMass_Confidence))
+
+    return Temperature_Confidence, ColdMass_Confidence, WarmMass_Confidence
 ###########
 # Testing #
 ###########

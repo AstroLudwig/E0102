@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import Eqs
 from mpl_colormap_tools import truncate_cmap
-
+from matplotlib.ticker import FormatStrFormatter
 ##############
 ## Switches ##
 ##############
@@ -47,7 +47,6 @@ ColdTemp = np.arange(2,70,1) # Kelvin
 ColdMass = 10**np.arange(-4,0.1,.1)
 # Warm Mass
 WarmMass = 10**np.arange(-8,-3,.1)
-
 #################
 #    Fitting    #
 #################
@@ -63,7 +62,7 @@ AverageError = Eqs.error(AverageIntensities)
 
  # Do the fit
 total_sed, warm_sed, cold_sed, temp, cold_mass, warm_mass, chi_squared, chi_squared_cube = Eqs.CalculateBestSed(ColdTemp,ColdMass,WarmMass,kappa[0],Areas[0],AverageIntensities)
-
+print(len(total_sed))
 # Print Solutions
 print("*~~Solutions~~~*")
 print("Temperature: " + str(temp)+ " K")
@@ -74,50 +73,13 @@ print("*~~~~~~~~~~~~~~*")
 #  Chi^2 Confidence Interval #
 ##############################
 
-# # Get the chi map holding one of the solutions constant.
-# chiMap_holdWarmMass = Eqs.CalculateChi(ColdTemp, ColdMass, warm_mass,kappa[0],Areas[0],AverageIntensities)
-# chiMap_holdColdMass = Eqs.CalculateChi(ColdTemp, cold_mass, WarmMass,kappa[0],Areas[0],AverageIntensities).transpose()
-# chiMap_holdTemp = Eqs.CalculateChi(temp, ColdMass, WarmMass,kappa[0],Areas[0],AverageIntensities)
-# FixedChiMaps = [chiMap_holdWarmMass,chiMap_holdColdMass,chiMap_holdTemp]
-
-# Allow all parameters to vary, getting the total chi map cube.
-# chiCube = Eqs.CalculateChi(ColdTemp, ColdMass, WarmMass,kappa[0],Areas[0],AverageIntensities)
-
 # 68.3%, 95.4% and 99.73%, or 1, 2 and 3 sigma 
 intervals = [1,4,9]
-
-
-## Find error intervals for some confidence level
-def ConfidenceInterval(interval): 
-    
-    self_width = 1
-    # Measure chi width's based on how far from the minimum it can be. 
-    # Max element - Min element + 1 (since there shouldn't be a 0 width, even 1 pixel has some width)
-    # This is multiplied by the interval in parameter space and divided by 2 to give a plus minus error.
-    # The interval is arbitrary so the array element values don't matter. Just want the width of a single parameter.
-    row_WM, col_T, z_CM = np.where(np.copy(chi_squared_cube) < (chi_squared + interval))
-
-    # Meshgrid works in a weird way where a,b,c = np.meshgrid(a,b,c) doesn't give you a shape(a,b,c).
-    # Instead it gives you a shape (b,a,c), so temperature doesn't correspond to row as I originally thought. 
-    # Temperature interval
-    Temperature_Confidence = (np.max(col_T)-np.min(col_T)+ self_width) * (ColdTemp[50] - ColdTemp[49]) / 2
-    # Cold Mass Interval
-    ColdMass_Confidence = (np.max(z_CM)-np.min(z_CM)+ self_width) * (ColdMass[30] - ColdMass[29]) / 2
-    # Warm Mass Interval
-    WarmMass_Confidence = (np.max(row_WM)-np.min(row_WM)+ self_width) * (WarmMass[30] - WarmMass[29]) / 2
-
-    # Stats 
-    print("Temperature Elements in Interval: "+str((np.max(col_T)-np.min(col_T)+ self_width) ))
-    print("Cold Dust Mass Elements in Interval: "+str((np.max(z_CM)-np.min(z_CM)+ self_width)))
-    print("Warm Dust Mass Elements in Interval: "+str((np.max(row_WM)-np.min(row_WM)+ self_width)))
-    print("Temperature interval in K: "+str(Temperature_Confidence))
-    print("Cold Dust Mass interval in Solar Mass Fraction: "+str(ColdMass_Confidence))
-    print("Warm Dust Mass interval in Solar Mass Fraction: "+str(WarmMass_Confidence))
 
 for i in range(3):
     print("...")
     print(str(np.sqrt(intervals[i]))+" sigma level stats:") 
-    ConfidenceInterval(intervals[i])
+    Eqs.ConfidenceInterval(intervals[i],chi_squared_cube,chi_squared,ColdTemp,ColdMass,WarmMass)
 
 ##################
 #    Plotting    #
@@ -156,12 +118,9 @@ if plot_ChiSquaredConfidence:
         Map[R,C] = np.nan 
         return np.copy(Map)
 
-    # This plots intervals while holding one of the solutions constant.
-    # The intervals aren't calculated like this, they allow all parameters to vary
-    # but plotting is easier this way.
-    
     f, axes = plt.subplots(3,2)
     
+    # What the elements actually represent on an axis
     physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
                     np.where(np.isclose(ColdTemp,temp))[0][0],
                         np.where(np.isclose(ColdMass,cold_mass))[0][0]]
@@ -186,8 +145,9 @@ if plot_ChiSquaredConfidence:
             axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
             axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
             axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
-
+   
+  #  axes[0,0].set_xticklabels(('{:.2E}').format(ColdMass)) # How to change the axis to be correct
     axes[0,0].set_title(titles[0])
     axes[0,1].set_title(titles[1])            
-
+   
 plt.show()
