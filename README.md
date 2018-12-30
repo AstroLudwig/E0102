@@ -64,7 +64,11 @@ Averaged_SED takes the mean value of the pixel intensities in the subtracted rem
 ![equation](https://i.ibb.co/GWrnRTQ/result.png)
 
 ### Integrated SED
-Integrated_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The result is a 
+Integrated_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting.
+  
+We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.
+  
+The results can be found in the table below:  
 
 ### Quantify Error with Chi Squared Confidence Intervals 
 During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
