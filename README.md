@@ -69,11 +69,12 @@ PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 2
 We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.
 To calculate the error we save each    
 The results can be found in the table below:  
-
+  
+  ![table](https://i.imgur.com/YMCKaoc.png)
 ### Quantify Error with Chi Squared Confidence Intervals 
 During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
 ![Table](https://imgur.com/UQqtGyG.png)
   
-This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for each parameter. We then calculate the frobenius norm of that map to determine our error.
+This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.
