@@ -7,20 +7,17 @@ import seaborn as sns
 ##############
 ## Switches ##
 ##############
-# Chose whether to use both cold amc and cold mg2 
-# or the detection limited cold amc sed images.
-use_all = False
-use_limit = True
-use_noBkgdErr = False
-use_PixLimit = False # Meant to be used with noBkgdErr.
+
 save = False
 # ~~~ Plotting ~~~ #
-# Plot General SED from Average of Each image
-plot_general = False
+# Plot Integrated SED
+plot_integrated = False
+# Plot Chi Squared Confidence Intervals for Integrated SED 
+plot_integrated_ChiSquaredConfidence = False
 # Plot Pixel by Pixel SED. Interactive
-plot_pix = False
+plot_interactive_pixbypix = False
 # Plot 4 Background Removed and Convolved/Regridded to 160 images.
-plot_imgs = False
+plot_imgs = True
 # Plot Temperature, Warm and Cold dust mass maps.
 plot_maps = False
 # Plot Temperature Map for Detection Limit. 
@@ -31,18 +28,20 @@ plot_chi = False
 # Plot both Pixel by Pixel SED and Chi Contours. Interactive.
 plot_all = False
 # Plot Sigma Maps for each image. 
-plot_sigma = True
+plot_sigma = False
 # Plot Contour Maps for Selected Pixels. 
 plot_SelectContour = False
 # Generate signal to noise maps without calibration or background error
 generate_SN = False
 # Plot SEDs For Warm Mass Peak and two blobs. 
 plot_SelectSED = False
+
 ###########
 ## Files ##
 ###########
 
-files = ['../Final_Files/24/Final_24_SNR_CR_Prnd.fits','../Final_Files/70/Final_70_SNR_CR_Prnd.fits','../Final_Files/100/Final_100_SNR_CR_Prnd.fits','../Final_Files/160/160um_70modeledFS_prnd_snr.fits']
+files = ['../Final_Files/24/24_SNR_Convolve_Regrid_Prune.fits','../Final_Files/70/70_SNR_Convolve_Regrid_Prune.fits',
+		'../Final_Files/100/100_SNR_Convolve_Regrid_Prune.fits','../Final_Files/160/160_SNR_Prune.fits']
 
 #############
 # Constants #
@@ -58,122 +57,156 @@ title = ["24um","70um","100um","160um"]
 # Plotting Range #
 ##################
 
-lam, k_amc = Eqs.log_extrap('../Kappa/kappa_amc.dat')
-lam, k_mg2 = Eqs.log_extrap('../Kappa/kappa_mg2sio4.dat')
+lam, k_amc = Eqs.log_extrap('Kappa/kappa_amc.dat')
+lam, k_mg2 = Eqs.log_extrap('Kappa/kappa_mg2sio4.dat')
 wv = [24,70,100,160]
 pix_area = Eqs.pixarea(files[0])
+
+####################
+# Parameter Ranges #
+####################
+# Create a grid to do a fit
+ColdTemp = np.arange(2,70,1) # Kelvin
+# Fractional Mass of the Sun using Dex
+# Cold Mass
+ColdMass = 10**np.arange(-4,0.1,.1)
+# Warm Mass
+WarmMass = 10**np.arange(-8,-3,.1)
+# Error Intervals
+# 68.3%, 95.4% and 99.73%, or 1, 2 and 3 sigma 
+intervals = [1,4,9]
 ##############
 # Get Data   #
 ##############
-data = []; sed_means = []
+# Get SNR data, the physical area of each SNR, and the average pixel intensity
+data = []; Areas = []; AverageIntensities = np.zeros(4)
 for i in range(4):
-	sm, ar = Eqs.sed_avg(files[i])
-	data.append(fits.open(files[i])[0].data)
-	sed_means.append(sm)
+    AverageIntensity, Area = Eqs.AverageSED(files[i])
+    data.append(fits.open(files[i])[0].data)
+    Areas.append(Area)
+    AverageIntensities[i] = AverageIntensity
 
-sigma = Eqs.error(sed_means)
-if use_all:
-	# SEDS
-	# AMC Maps                                         # MG2 Maps
-	AMC_Total_SED = np.load("Sols/Total_SED_Map.npy"); MG2_Total_SED = np.load("Sols/Total_SED_Map_MG2.npy")
-	AMC_Warm_SED = np.load("Sols/Warm_SED_Map.npy");   MG2_Warm_SED = np.load("Sols/Warm_SED_Map_MG2.npy")
-	AMC_Cold_SED = np.load("Sols/Cold_SED_Map.npy");   MG2_Cold_SED = np.load("Sols/Cold_SED_Map_MG2.npy")
-	# Temperature
-	# AMC Maps                                         # MG2 Maps
-	AMC_Temp = np.loadtxt("Sols/TemperatureMap.txt");  MG2_Temp = np.loadtxt("Sols/MG2_TemperatureMap.txt")
-	# Mass 
-	# AMC Maps                                            # MG2 Maps
-	AMC_Total_Mass = np.loadtxt("Sols/TotalMassMap.txt"); MG2_Total_Mass = np.loadtxt("Sols/MG2_TotalMassMap.txt")
-	AMC_Warm_Mass = np.loadtxt("Sols/WarmMassMap.txt");   MG2_Warm_Mass = np.loadtxt("Sols/MG2_WarmMassMap.txt")
-	AMC_Cold_Mass = np.loadtxt("Sols/ColdMassMap.txt");   MG2_Cold_Mass = np.loadtxt("Sols/MG2_ColdMassMap.txt")
-	# Chi Squared Maps
-	# AMC Maps                                   # MG2 Maps
-	AMC_chi = np.loadtxt("Sols/ChiSqrdMap.txt"); MG2_chi = np.loadtxt("Sols/MG2_ChiSqrdMap.txt")
-	# General SEDs 
-	Gen_TSed = np.loadtxt("Sols/General_TotalSED.txt");Gen_WSed = np.loadtxt("Sols/General_WarmSED.txt")
-	Gen_CSed = np.loadtxt("Sols/General_ColdSED.txt");Gen_Stats = np.loadtxt("Sols/General_TempMassWarmMassChi.txt")
-	Gen_Mg2TSed = np.loadtxt("Sols/MG2_General_TotalSED.txt"); Gen_Mg2Stats = np.loadtxt("Sols/MG2_General_TempMassWarmMassChi.txt")
-if use_limit:
-	# SEDS
-	# AMC Maps                                         
-	AMC_Total_SED = np.load("Sols/DetectionLimited_Total_SED_Map.npy");
-	AMC_Warm_SED = np.load("Sols/DetectionLimited_Warm_SED_Map.npy")
-	AMC_Cold_SED = np.load("Sols/DetectionLimited_Cold_SED_Map.npy")
-	# Temperature
-	# AMC Maps                                         
-	AMC_Temp = np.loadtxt("Sols/DetectionLimited_TemperatureMap.txt"); 
-	# Mass 
-	# AMC Maps                                           
-	AMC_Total_Mass = np.loadtxt("Sols/DetectionLimited_TotalMassMap.txt"); 
-	AMC_Warm_Mass = np.loadtxt("Sols/DetectionLimited_WarmMassMap.txt");
-	AMC_Cold_Mass = np.loadtxt("Sols/DetectionLimited_ColdMassMap.txt");   
-	# Chi Squared Maps
-	# AMC Maps                                   
-	AMC_chi = np.loadtxt("Sols/DetectionLimited_ChiSqrdMap.txt"); 
+# Get the error associated with each intensity
+AverageError = Eqs.error(AverageIntensities)
 
-if use_noBkgdErr:
-	# SEDS #BkgdErrRemovd_
-	# AMC Maps                                         
-	AMC_Total_SED = np.load("Sols/BkgdErrRemovd_Total_SED_Map.npy");
-	AMC_Warm_SED =  np.load("Sols/BkgdErrRemovd_Warm_SED_Map.npy")
-	AMC_Cold_SED =  np.load("Sols/BkgdErrRemovd_Cold_SED_Map.npy")
-	# Temperature
-	# AMC Maps                                         
-	AMC_Temp = np.loadtxt("Sols/BkgdErrRemovd_TemperatureMap.txt"); 
-	# Mass 
-	# AMC Maps                                           
-	AMC_Total_Mass = np.loadtxt("Sols/BkgdErrRemovd_TotalMassMap.txt"); 
-	AMC_Warm_Mass = np.loadtxt("Sols/BkgdErrRemovd_WarmMassMap.txt");
-	AMC_Cold_Mass = np.loadtxt("Sols/BkgdErrRemovd_ColdMassMap.txt");   
-	# Chi Squared Maps
-	# AMC Maps                                   
-	AMC_chi = np.loadtxt("Sols/BkgdErrRemovd_ChiSqrdMap.txt"); 
-	# General SEDs 
-	Gen_TSed = np.loadtxt("Sols/BkgdErrRemovd_General_TotalSED.txt");Gen_WSed = np.loadtxt("Sols/BkgdErrRemovd_General_WarmSED.txt")
-	Gen_CSed = np.loadtxt("Sols/BkgdErrRemovd_General_ColdSED.txt");Gen_Stats = np.loadtxt("Sols/BkgdErrRemovd_General_TempMassWarmMassChi.txt")
-	
-	if use_PixLimit:
-		# Get a map of 1's and 0's that tells you which pixels to use. 
-		template = np.copy(data[0])
-		for i in range(np.shape(data[0])[0]):
-			for j in range(np.shape(data[0])[1]):
-				arr_int = np.asarray([data[0][i,j],data[1][i,j],data[2][i,j],data[3][i,j]])
-				# If the mean of the intensities in each image is less than twice the mean error than remove it. 
-				if np.isfinite(arr_int[0]) and np.isfinite(arr_int[1]) and np.isfinite(arr_int[2]) and np.isfinite(arr_int[3]):
-					if np.nanmean(arr_int) < 3 * np.nanmean(Eqs.errorNoBkgd(arr_int)):
-						template[i,j] = 0
-					else: 
-						template[i,j] = 1
-		plt.imshow(template,vmin=0,vmax=1)
-		plt.ylim(110,130); plt.xlim(118,140)
-		plt.title("Template Image")
-		# Multiply each SED by this template. 
-		for i in range(np.shape(AMC_Total_SED)[2]):
-			AMC_Total_SED[:,:,i] = AMC_Total_SED[:,:,i] * template
-			AMC_Warm_SED[:,:,i] = AMC_Warm_SED[:,:,i] * template  
-			AMC_Cold_SED[:,:,i] = AMC_Cold_SED[:,:,i] * template    
+#############################
+# Load pixel by pixel files #
+#############################
+
+Pix_Total_SED = np.load("Sols/PixbyPix/Total_SED.npy");
+Pix_Warm_SED =  np.load("Sols/PixbyPix/Warm_SED.npy")
+Pix_Cold_SED =  np.load("Sols/PixbyPix/Cold_SED.npy")
+
+# Temperature                                         
+Pix_Temp = np.loadtxt("Sols/PixbyPix/Temperature.txt"); 
+
+# Mass 
+Pix_Warm_Mass = np.loadtxt("Sols/PixbyPix/WarmMass.txt");
+Pix_Cold_Mass = np.loadtxt("Sols/PixbyPix/ColdMass.txt");   
+
+# Chi Squared Maps                            
+Pix_chisqrd = np.loadtxt("Sols/PixbyPix/ChiSquared.txt"); 
+
+#########################
+# Load integrated files #
+#########################
+
+cold_sed = np.loadtxt("Sols/Integrated/cold_sed.txt")
+warm_sed = np.loadtxt("Sols/Integrated/warm_sed.txt")
+chi_squared_cube = np.load("Sols/Integrated/chi_squared_cube.npy")
+temp,cold_mass,warm_mass,chi_squared = np.loadtxt("Sols/Integrated/temp_coldmass_warmmass_chisqrd.txt")
+total_sed = cold_sed + warm_sed
+
+#################
+# Load Template #
+#################	
+
+template = np.loadtxt("Sols/Template.txt")
 
 ##########
 # Plot   #
 ##########
+if plot_integrated:
+    fig = plt.figure(figsize=(11,8))
+    plot = fig.add_subplot(111)
+    # Plot SEDs
+    plot.plot(lam,total_sed,color="#424186")
+    plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
+    plot.plot(lam,cold_sed,color="#23A883")
+    # Plot Measured Values
+    plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
+    # Plot Labels
+    plot.set_xlabel("Wavelength ($\mu m$)",size=18)
+    plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
+    plot.set_title("Average Spectral Energy Distribution",size=20)
+    plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
+    
+    plot.tick_params(axis='both', which='major', labelsize=16)
+    plot.tick_params(axis='both', which='minor', labelsize=14)
+    
+    plot.grid(color='white',linestyle='-')
+    plot.set_facecolor("#EAEAF2")
 
-if plot_pix:
+    print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
+    if save:
+        plt.savefig("AverageSED.png")
+
+if plot_integrated_ChiSquaredConfidence:
+
+    def ChiSquaredMap(Map,interval):
+        Map = np.copy(Map)
+        # Change everything outside the interval to NaN.
+        R,C = np.where(Map > (chi_squared + interval))
+        Map[R,C] = np.nan 
+        return np.copy(Map)
+
+    f, axes = plt.subplots(3,2)
+    
+    # What the elements actually represent on an axis
+    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
+                    np.where(np.isclose(ColdTemp,temp))[0][0],
+                        np.where(np.isclose(ColdMass,cold_mass))[0][0]]
+
+    physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
+                    np.where(np.isclose(WarmMass,warm_mass))[0][0],
+                        np.where(np.isclose(ColdTemp,temp))[0][0]]
+    
+    titles = ["68.3% Confidence","95.4% Confidence"]
+    ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
+    xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
+    
+    # Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
+    chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
+                            np.copy(chi_squared_cube)[:,:,physical_X[0]],
+                                np.copy(chi_squared_cube)[physical_Y[0],:,:]]
+    
+    for i in range(3):
+        for j in range(2):
+            img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
+            axes[i,j].imshow(img)
+            axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
+            axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
+            axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
+   
+    axes[0,0].set_title(titles[0])
+    axes[0,1].set_title(titles[1])  
+if plot_interactive_pixbypix:
 
 	f, (ax,bx) = plt.subplots(1,2)
 	inObsvSed = [data[0][0,0],data[1][0,0],data[2][0,0],data[3][0,0]]
 	inObsvErr = Eqs.error(inObsvSed)
 	ax.imshow(data[3])
 	ax.scatter(0,0,c='r',marker='s',s=40)
-	bx.plot(lam,AMC_Total_SED[0,0],label="Total SED")
-	bx.plot(lam,AMC_Warm_SED[0,0],label="Warm SED")
-	bx.plot(lam,AMC_Cold_SED[0,0],label="Cold SED")
+	bx.plot(lam,Pix_Total_SED[0,0],label="Total SED")
+	bx.plot(lam,Pix_Warm_SED[0,0],label="Warm SED")
+	bx.plot(lam,Pix_Cold_SED[0,0],label="Cold SED")
 	bx.errorbar(wv,inObsvSed,yerr=inObsvErr,marker='o',linestyle='none',c='purple')
 	ax.set_xlim(xdim[0],xdim[1])
 	ax.set_ylim(ydim[0],ydim[1])
-	bx.set_ylim(0, np.max(AMC_Total_SED[0,0])+2)
+	bx.set_ylim(0, np.max(Pix_Total_SED[0,0])+2)
 	bx.grid()
 	plt.legend()
-	plt.title(("Temperature: {:2d} K,  Cold Mass: {:.2f} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[0,0]),AMC_Cold_Mass[0,0],AMC_Warm_Mass[0,0],AMC_chi[0,0]))
+	plt.title(("Temperature: {:2d} K,  Cold Mass: {:.2f} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[0,0]),Pix_Cold_Mass[0,0],Pix_Warm_Mass[0,0],Pix_chisqrd[0,0]))
 	bx.set_xlabel("Wavelength ($\mu$m)")
 	bx.set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
 	ax.axis("off")
@@ -193,22 +226,41 @@ if plot_pix:
 		ax.set_ylim(ydim[0],ydim[1])
 		ax.axis("off")
 
-		bx.plot(lam,AMC_Total_SED[i,j],label="Total SED")
-		bx.plot(lam,AMC_Warm_SED[i,j],label="Warm SED")
-		bx.plot(lam,AMC_Cold_SED[i,j],label="Cold SED")
+		bx.plot(lam,Pix_Total_SED[i,j],label="Total SED")
+		bx.plot(lam,Pix_Warm_SED[i,j],label="Warm SED")
+		bx.plot(lam,Pix_Cold_SED[i,j],label="Cold SED")
 		
-		bx.set_ylim(0, np.max(AMC_Total_SED[i,j])+2)
+		bx.set_ylim(0, np.max(Pix_Total_SED[i,j])+2)
 		bx.errorbar(wv,ObsvSed,yerr=ObsvErr,marker='o',linestyle='none',c='purple')
 		bx.grid()
 		plt.legend()
-		plt.title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[i,j]),AMC_Cold_Mass[i,j],AMC_Warm_Mass[i,j],AMC_chi[i,j]))
+		plt.title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[i,j]),Pix_Cold_Mass[i,j],Pix_Warm_Mass[i,j],Pix_chisqrd[i,j]))
 		bx.set_xlabel("Wavelength ($\mu$m)")
 		bx.set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
 
 		plt.draw()
 
 	cid = f.canvas.mpl_connect('button_press_event', onclick)
-
+if plot_imgs:    
+	f, axes = plt.subplots(2,2,figsize=(10,15))
+	x1 = 116; x2 = 140; y1 = 112; y2 = 128
+	vmin = 0; vmax = 10
+	axes[0,0].imshow(fits.open(files[0])[0].data,vmin=vmin,vmax=vmax)
+	axes[0,1].imshow(fits.open(files[1])[0].data,vmin=vmin,vmax=vmax)
+	axes[1,0].imshow(fits.open(files[2])[0].data,vmin=vmin,vmax=vmax)
+	axes[1,1].imshow(fits.open(files[3])[0].data,vmin=vmin,vmax=vmax)
+	axes[0,0].set_xlim(x1,x2); axes[0,0].set_ylim(y1,y2); axes[0,0].axis("off")
+	axes[0,1].set_xlim(x1,x2); axes[0,1].set_ylim(y1,y2); axes[0,1].axis("off")
+	axes[1,0].set_xlim(x1,x2); axes[1,0].set_ylim(y1,y2); axes[1,0].axis("off")
+	axes[1,1].set_xlim(x1,x2); axes[1,1].set_ylim(y1,y2); axes[1,1].axis("off") 
+	 
+	axes[0,0].set_title("24 $\mu$m",fontsize="x-large"); axes[0,1].set_title("70 $\mu$m",fontsize="x-large")
+	axes[1,0].set_title("100 $\mu$m",fontsize="x-large"); axes[1,1].set_title("160 $\mu$m",fontsize="x-large")
+	f.set_size_inches(5, 5)
+	plt.subplots_adjust(wspace=-.15,hspace=-.1,top=1,bottom=0,right=1,left=0)
+	plt.savefig("Plots/E0102_Regrid_Convolved.png",dpi=200, bbox_inches='tight', pad_inches = 0 )
+	#(top = 1, bottom = 0, right = 1, left = 0, 
+    #        hspace = 0, wspace = 0)
 if plot_chi:
 
 	T = np.arange(2,70,1) # Kelvin
@@ -237,7 +289,7 @@ if plot_chi:
 	bx.grid()
 
 
-	bx.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[0,0]),AMC_Cold_Mass[0,0],AMC_Warm_Mass[0,0],AMC_chi[0,0]))
+	bx.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[0,0]),Pix_Cold_Mass[0,0],Pix_Warm_Mass[0,0],Pix_chisqrd[0,0]))
 	
 
 
@@ -271,7 +323,7 @@ if plot_chi:
 
 		bx.set_xlabel("Mass Range in Solar Fractional Mass")
 		bx.set_ylabel("Temperature in Kelvin")
-		bx.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[i,j]),AMC_Cold_Mass[i,j],AMC_chi[i,j]))
+		bx.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[i,j]),Pix_Cold_Mass[i,j],Pix_chisqrd[i,j]))
 		#cx.imshow(np.log(chiMap[i,j]))
 		#cb.remove()
 
@@ -280,49 +332,32 @@ if plot_chi:
 		
 	cid = f.canvas.mpl_connect('button_press_event', onclick)	
 
-if plot_imgs:    
-	f, axes = plt.subplots(2,2,figsize=(10,15))
-	x1 = 115; x2 = 140; y1 = 110; y2 = 130
-	vmin = 0; vmax = 10
-	axes[0,0].imshow(fits.open(files[0])[0].data,vmin=vmin,vmax=vmax)
-	axes[0,1].imshow(fits.open(files[1])[0].data,vmin=vmin,vmax=vmax)
-	axes[1,0].imshow(fits.open(files[2])[0].data,vmin=vmin,vmax=vmax)
-	axes[1,1].imshow(fits.open(files[3])[0].data,vmin=vmin,vmax=vmax)
-	axes[0,0].set_xlim(x1,x2)
-	axes[0,1].set_xlim(x1,x2)
-	axes[1,0].set_xlim(x1,x2)
-	axes[1,1].set_xlim(x1,x2)
-	axes[0,0].set_ylim(y1,y2)
-	axes[0,1].set_ylim(y1,y2)
-	axes[1,0].set_ylim(y1,y2)
-	axes[1,1].set_ylim(y1,y2)  
-
 if plot_maps: # Temperature Map
 	# Prep Temp Map for Mean Measurement
-	a,b = np.shape(AMC_Temp)
-	temp = np.copy(AMC_Temp)
+	a,b = np.shape(Pix_Temp)
+	temp = np.copy(Pix_Temp)
 	for i in range(a):
 		for j in range(b):
-			if AMC_Temp[i,j] == 0.:
+			if Pix_Temp[i,j] == 0.:
 				temp[i,j] = np.nan
 				
 	g, (ax,bx,cx) = plt.subplots(1,3)
-	tim = ax.imshow(AMC_Temp ,vmin = np.nanmin(temp), vmax = np.nanmax(temp))
+	tim = ax.imshow(Pix_Temp ,vmin = np.nanmin(temp), vmax = np.nanmax(temp))
 	ax.set_title(("Temperature Map.\n Average is {}").format(int(np.nanmean(temp))))
 	ax.set_ylim(110,130)
 	ax.set_xlim(115,140)
 	ax.axis("off")
 	g.colorbar(tim, ax=ax)
 
-	wim = bx.imshow(AMC_Warm_Mass ,vmin = np.min(AMC_Warm_Mass), vmax = np.max(AMC_Warm_Mass))
-	bx.set_title(("Warm Mass Map.\n Sum is {:2f}").format(np.sum(AMC_Warm_Mass)))
+	wim = bx.imshow(Pix_Warm_Mass ,vmin = np.min(Pix_Warm_Mass), vmax = np.max(Pix_Warm_Mass))
+	bx.set_title(("Warm Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Warm_Mass)))
 	bx.set_ylim(110,130)
 	bx.set_xlim(115,140)
 	bx.axis("off")
 	g.colorbar(wim, ax=bx)
 
-	cim = cx.imshow(AMC_Cold_Mass ,vmin = np.min(AMC_Cold_Mass), vmax = np.max(AMC_Cold_Mass))
-	cx.set_title(("Cold Mass Map.\n Sum is {:2f}").format(np.sum(AMC_Cold_Mass)))
+	cim = cx.imshow(Pix_Cold_Mass ,vmin = np.min(Pix_Cold_Mass), vmax = np.max(Pix_Cold_Mass))
+	cx.set_title(("Cold Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Cold_Mass)))
 	cx.set_ylim(110,130)
 	cx.set_xlim(115,140)
 	cx.axis("off")
@@ -374,14 +409,14 @@ if plot_all:
 	ax.axis("off")
 	ax.set_xlim(xdim[0],xdim[1])
 	ax.set_ylim(ydim[0],ydim[1])
-	ax.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2f} $M_\odot$, \n Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[0,0]),AMC_Cold_Mass[0,0],AMC_Warm_Mass[0,0],AMC_chi[0,0]))
+	ax.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2f} $M_\odot$, \n Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[0,0]),Pix_Cold_Mass[0,0],Pix_Warm_Mass[0,0],Pix_chisqrd[0,0]))
 
 	# SED Plot 
-	bx.plot(lam,AMC_Total_SED[0,0],label="Total SED")
-	bx.plot(lam,AMC_Warm_SED[0,0],label="Warm SED")
-	bx.plot(lam,AMC_Cold_SED[0,0],label="Cold SED")
+	bx.plot(lam,Pix_Total_SED[0,0],label="Total SED")
+	bx.plot(lam,Pix_Warm_SED[0,0],label="Warm SED")
+	bx.plot(lam,Pix_Cold_SED[0,0],label="Cold SED")
 	bx.errorbar(wv,inObsvSed,yerr=inObsvErr,marker='o',linestyle='none',c='purple')
-	bx.set_ylim(0, np.max(AMC_Total_SED[0,0])+2)
+	bx.set_ylim(0, np.max(Pix_Total_SED[0,0])+2)
 	bx.grid()
 	bx.set_xlabel("Wavelength ($\mu$m)")
 	bx.set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
@@ -392,8 +427,8 @@ if plot_all:
 	cb = f.colorbar(cs)
 	cx.set_xlabel("Mass Range in Solar Fractional Mass")
 	cx.set_ylabel("Temperature in Kelvin")
-	xr = [M_[0],AMC_Cold_Mass[0,0]+2*AMC_Cold_Mass[0,0]]
-	yr = [AMC_Temp[0,0]-.5*AMC_Temp[0,0],AMC_Temp[0,0]+.5*AMC_Temp[0,0]]
+	xr = [M_[0],Pix_Cold_Mass[0,0]+2*Pix_Cold_Mass[0,0]]
+	yr = [Pix_Temp[0,0]-.5*Pix_Temp[0,0],Pix_Temp[0,0]+.5*Pix_Temp[0,0]]
 	cx.set_xlim(xr)
 	cx.set_ylim(yr)
 	#cx.grid()
@@ -418,15 +453,15 @@ if plot_all:
 		ax.set_ylim(ydim[0],ydim[1])
 		ax.axis("off")
 
-		bx.plot(lam,AMC_Total_SED[i,j],label="Total SED")
-		bx.plot(lam,AMC_Warm_SED[i,j],label="Warm SED")
-		bx.plot(lam,AMC_Cold_SED[i,j],label="Cold SED")
+		bx.plot(lam,Pix_Total_SED[i,j],label="Total SED")
+		bx.plot(lam,Pix_Warm_SED[i,j],label="Warm SED")
+		bx.plot(lam,Pix_Cold_SED[i,j],label="Cold SED")
 		
-		bx.set_ylim(0, np.max(AMC_Total_SED[i,j])+2)
+		bx.set_ylim(0, np.max(Pix_Total_SED[i,j])+2)
 		bx.errorbar(wv,ObsvSed,yerr=ObsvErr,marker='o',linestyle='none',c='purple')
 		bx.grid()
 		#plt.legend()
-		ax.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$, \n Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(AMC_Temp[i,j]),AMC_Cold_Mass[i,j],AMC_Warm_Mass[i,j],AMC_chi[i,j]))
+		ax.set_title(("Temperature: {:2d} K,  Cold Mass: {:.2E} $M_\odot$, \n Warm Mass: {:.2E} $M_\odot$,  $\chi^2$: {:.2f}").format(int(Pix_Temp[i,j]),Pix_Cold_Mass[i,j],Pix_Warm_Mass[i,j],Pix_chisqrd[i,j]))
 		bx.set_xlabel("Wavelength ($\mu$m)")
 		bx.set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
 
@@ -437,8 +472,8 @@ if plot_all:
 		cx.set_xlabel("Mass Range in Solar Fractional Mass")
 		cx.set_ylabel("Temperature in Kelvin")
 		#cx.grid()
-		xr = [M_[0],2*AMC_Cold_Mass[i,j]]
-		yr = [AMC_Temp[i,j]-.5*AMC_Temp[i,j],AMC_Temp[i,j]+.5*AMC_Temp[i,j]]
+		xr = [M_[0],2*Pix_Cold_Mass[i,j]]
+		yr = [Pix_Temp[i,j]-.5*Pix_Temp[i,j],Pix_Temp[i,j]+.5*Pix_Temp[i,j]]
 		cx.set_xlim(xr)
 		cx.set_ylim(yr)
 		cx.ticklabel_format(style='sci',scilimits=(-3,4),axis='x')
@@ -593,13 +628,13 @@ if generate_SN:
 
 	# Get SED maps based on these binary ones. 
 	#AMC_Total_Mass = np.loadtxt("Sols/BkgdErrRemovd_TotalMassMap.txt"); 
-	#AMC_Warm_Mass = np.loadtxt("Sols/BkgdErrRemovd_WarmMassMap.txt");
-	#AMC_Cold_Mass = np.loadtxt("Sols/BkgdErrRemovd_ColdMassMap.txt");   
+	#Pix_Warm_Mass = np.loadtxt("Sols/BkgdErrRemovd_WarmMassMap.txt");
+	#Pix_Cold_Mass = np.loadtxt("Sols/BkgdErrRemovd_ColdMassMap.txt");   
 
 	TotalMass = np.copy(AMC_Total_Mass)
-	WarmMass = np.copy(AMC_Warm_Mass)
-	ColdMass = np.copy(AMC_Cold_Mass)
-	TemP = np.copy(AMC_Temp)
+	WarmMass = np.copy(Pix_Warm_Mass)
+	ColdMass = np.copy(Pix_Cold_Mass)
+	TemP = np.copy(Pix_Temp)
 	for i in range(a):
 		for j in range(b):
 			if BiMap[0][i,j] == 0 or BiMap[1][i,j] ==0 or BiMap[2][i,j] == 0 or BiMap[3][i,j] == 0:
@@ -661,9 +696,9 @@ if plot_SelectSED:
 	for i in range(3):
 		ObsvSed = [data[0][Py[i],Px[i]],data[1][Py[i],Px[i]],data[2][Py[i],Px[i]],data[3][Py[i],Px[i]]]
 		ObsvErr = Eqs.error(ObsvSed)
-		plots[i].plot(lam,AMC_Total_SED[Py[i],Px[i]],label="Total SED",color="#424186")
-		plots[i].plot(lam,AMC_Warm_SED[Py[i],Px[i]],label="Warm SED",color="#84D44B",ls='dashed')
-		plots[i].plot(lam,AMC_Cold_SED[Py[i],Px[i]],label="Cold SED",color="#23A883")
+		plots[i].plot(lam,Pix_Total_SED[Py[i],Px[i]],label="Total SED",color="#424186")
+		plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]],label="Warm SED",color="#84D44B",ls='dashed')
+		plots[i].plot(lam,Pix_Cold_SED[Py[i],Px[i]],label="Cold SED",color="#23A883")
 		
 		plots[i].set_xlabel("Wavelength ($\mu m$)")
 		plots[i].set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")

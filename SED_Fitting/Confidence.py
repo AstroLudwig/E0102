@@ -49,7 +49,7 @@ def getRange(pixel):
 
 # Load Chi Map for AMC Full
 chiMap = np.load("Sols/Parameter_Chi_Map.npy")
-#np.save("Sols/Parameter_Chi_Map_Math.dat",chiMap)
+
 # Initialize Arrays for Various Confidence Levels
 chimap = []
 chimap99 = []; chimap95 = []; chimap90 = []; chimap68 = []

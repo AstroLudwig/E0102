@@ -21,11 +21,9 @@ save = False
 # Running the pixel by pixel fit takes a while
 # Run once and save in text file
 calculate_data = False
-# Load text files
+# Load text files, print stats
 load_data = True
-# Plot SEDS of 24 micron hot spot 
-# and the 2 blobs at longer wavelengths
-plot_selectedpix = True
+
 ###########
 ## Files ##
 ###########
@@ -93,7 +91,7 @@ if calculate_data:
                 allTotalSED[i,j,:] = total_sed; allWarmSED[i,j,:] = warm_sed; allColdSED[i,j,:] = cold_sed
                 allTemps[i,j] = temp; allColdMass[i,j] = cold_mass; allWarmMass[i,j] = warm_mass; allChiSquared[i,j] = chi_squared
                 # Saving the chi squared cube individually because of memory errors
-                np.save("Sols/ChiSquaredCubes/cube_"+str(i)+"_"+str(j)+"_.npy",chi_squared_cube)
+                np.save("Sols/PixbyPix/ChiSquaredCubes/cube_"+str(i)+"_"+str(j)+"_.npy",chi_squared_cube)
                 for k in range(2):
                     T,C,W = Eqs.ConfidenceInterval(intervals[k],chi_squared_cube,chi_squared,ColdTemp,ColdMass,WarmMass)
                     Temperature_Confidence[i,j,k] = T
@@ -101,21 +99,21 @@ if calculate_data:
                     WarmMass_Confidence[i,j,k] = W
    
     # # Save arrays
-    np.save("Sols/Total_SED.npy",allTotalSED); np.save("Sols/Warm_SED.npy",allWarmSED); np.save("Sols/Cold_SED.npy",allColdSED)            
-    np.savetxt("Sols/Temperature.txt", allTemps); np.savetxt("Sols/ColdMass.txt",allColdMass); np.savetxt("Sols/WarmMass.txt",allWarmMass)
-    np.savetxt('Sols/ChiSquared.txt',allChiSquared)    
+    np.save("Sols/PixbyPix/Total_SED.npy",allTotalSED); np.save("Sols/PixbyPix/Warm_SED.npy",allWarmSED); np.save("Sols/PixbyPix/Cold_SED.npy",allColdSED)            
+    np.savetxt("Sols/PixbyPix/Temperature.txt", allTemps); np.savetxt("Sols/PixbyPix/ColdMass.txt",allColdMass); np.savetxt("Sols/PixbyPix/WarmMass.txt",allWarmMass)
+    np.savetxt('Sols/PixbyPix/ChiSquared.txt',allChiSquared)    
 
-    np.save("Sols/Temperature_Confidence.npy",Temperature_Confidence)
-    np.save("Sols/Cold_Mass_Confidence.npy",ColdMass_Confidence)
-    np.save("Sols/Warm_Mass_Confidence.npy",WarmMass_Confidence)
+    np.save("Sols/PixbyPix/Temperature_Confidence.npy",Temperature_Confidence)
+    np.save("Sols/PixbyPix/Cold_Mass_Confidence.npy",ColdMass_Confidence)
+    np.save("Sols/PixbyPix/Warm_Mass_Confidence.npy",WarmMass_Confidence)
 
 if load_data:    
-    ColdMass_Map = np.loadtxt("Sols/ColdMass.txt"); WarmMass_Map = np.loadtxt("Sols/WarmMass.txt")
-    Temperature_Map = np.loadtxt("Sols/Temperature.txt"); Chi_Map = np.loadtxt("Sols/ChiSquared.txt")
-    WarmSed_Cube = np.load("Sols/Warm_SED.npy"); ColdSed_Cube = np.load("Sols/Cold_SED.npy");
-    Temperature_Confidence = np.load("Sols/Temperature_Confidence.npy"); 
-    ColdMass_Confidence = np.load("Sols/Cold_Mass_Confidence.npy",)
-    WarmMass_Confidence = np.load("Sols/Warm_Mass_Confidence.npy")
+    ColdMass_Map = np.loadtxt("Sols/PixbyPix/ColdMass.txt"); WarmMass_Map = np.loadtxt("Sols/PixbyPix/WarmMass.txt")
+    Temperature_Map = np.loadtxt("Sols/PixbyPix/Temperature.txt"); Chi_Map = np.loadtxt("Sols/PixbyPix/ChiSquared.txt")
+    WarmSed_Cube = np.load("Sols/PixbyPix/Warm_SED.npy"); ColdSed_Cube = np.load("Sols/PixbyPix/Cold_SED.npy");
+    Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy"); 
+    ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy",)
+    WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")
 
     sigma_fit = 1
     # To get the error I'm calculating the frobenius norm of the interval map
@@ -132,6 +130,7 @@ if load_data:
     print("...")
     print("Detection Limited Stats")
     print("...")
+    
     # Create Detection Limited Template
     n = 2
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
@@ -140,6 +139,9 @@ if load_data:
     Template = np.copy(FlatData)
     Template[np.where(np.copy(FlatData) > n * np.sum(Noise))] = 1
     Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
+    
+    # Save Template
+    np.savetxt("Sols/Template.txt",Template) 
 
     # Multiply it by Maps and then take Stats
     print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
@@ -151,32 +153,3 @@ if load_data:
     
     print("Average Temperature "+str(np.mean((np.copy(Temperature_Map)*Template)[np.where(Temperature_Map > 0)]))
             +" pm "+str(np.mean((np.copy(Temperature_Confidence[:,:,sigma_fit])*Template)[np.where(Temperature_Map>0)])))
-#if plot_selectedpix:
-    # First I want to look at what pix we're talking about 
-
-# if plot_general:
-#     fig = plt.figure(figsize=(11,8))
-#     plot = fig.add_subplot(111)
-#     # Plot SEDs
-#     plot.plot(lam,total_sed,color="#424186")
-#     plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
-#     plot.plot(lam,cold_sed,color="#23A883")
-#     # Plot Measured Values
-#     plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
-#     # Plot Labels
-#     plot.set_xlabel("Wavelength ($\mu m$)",size=18)
-#     plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
-#     plot.set_title("Average Spectral Energy Distribution",size=20)
-#     plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
-    
-#     plot.tick_params(axis='both', which='major', labelsize=16)
-#     plot.tick_params(axis='both', which='minor', labelsize=14)
-    
-#     plot.grid(color='white',linestyle='-')
-#     plot.set_facecolor("#EAEAF2")
-
-#     print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
-#     if save:
-#         plt.savefig("AverageSED.png")
-
-#plt.show()
