@@ -42,6 +42,11 @@ The scale factor we solve for is based on the median of the ratio of an annulus 
 ![equation](https://latex.codecogs.com/gif.latex?100&space;\mu&space;m&space;\text{&space;Background}=&space;70&space;\mu&space;m&space;\text{&space;Background}&space;\times&space;\Big(\frac{100\mu\text{m&space;Image}&space;}{70&space;\mu&space;m\text{&space;Background}&space;}\Big)_{Med})
   
 We adjust the scale factor to meet the condition that a region, which is generally over subtracted in each image, should ideally be close to zero with any negative intensities the result of noise in the image. We use the median of the ratio as an intial guess and then define a region, centered at RA, DEC = 1h 4m 3.54s -72d 01m 37.55s, with a radius of 3". This is about 4 to 9 pixels depending on the image. This corrects the median by 16% of the initial guess. This adjustment accounts for the fact that there is no constant temperature in the image and that high intensities may be over accounted for in the initial guess.
+### E0102, Reduced, Convolved, Regridded  
+
+<img src="https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Plots/E0102_Regrid_Convolved.png" alt="E0102" width="400" height="300"></div>
+
+This is the result of all the background removal. The color min and max is the same in all images. This clearly shows why early measurements of E0102 at 24 microns underestimated the amount of dust present in this remnant.   
 ## Spectral Energy Distribution (SED) Fitting
 ### Image Prep
 Everything we've done until now has been data reduction, now we take our measurements. We first need to convolve and regrid everything to the lowest resolution, the 160 micron image. We also further reduce the data here by removing everything outside of a 22" radius from the center RA, DEC = 1h 4m 2.1s -72d 01m 52.5s. Files are saved under Final Files and will be used for futher plotting and fitting purposes.
@@ -66,8 +71,7 @@ Integrated_SED takes the mean value of the pixel intensities in the subtracted r
 ### Pixel by Pixel SED
 PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting.
   
-We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.
-To calculate the error we save each    
+We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.   
 The results can be found in the table below:  
   
   ![table](https://i.imgur.com/YMCKaoc.png)
@@ -75,6 +79,6 @@ The results can be found in the table below:
 During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
 ![Table](https://imgur.com/UQqtGyG.png)
   
-This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
+This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the Frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.
