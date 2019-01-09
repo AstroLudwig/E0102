@@ -73,8 +73,16 @@ PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 2
   
 We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.   
 The results can be found in the table below:  
+#### The Table below sums the solutions for every pixel.  
+The error is summed using a frobenius norm, where all the elements in the matrix are squared and summed before the square root is taken. The error in this table is very high because some of the pixels fall below the sky noise level and so are detection limited. They can therefore be fit with spurious errors. In effect, the error of a very small number of pixels dominates the error in all other pixels.   
   
-  ![table](https://i.imgur.com/YMCKaoc.png)
+![Includes All Pixels](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/PixbyPix_All.png)
+
+#### To remove this effect, we remove the detection limited pixels. 
+To do this, we create a template where all pixels that are 3 times the noise or higher are set to 1 and all else 0. This template is then multiplied into the solution maps. As a result, the error is reduced significanly as seen in the below table.  
+  
+![Includes Some Pixels](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/PixbyPix_DetectionLimited.png)
+  
 ### Quantify Error with Chi Squared Confidence Intervals 
 During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
 ![Table](https://imgur.com/UQqtGyG.png)
