@@ -72,7 +72,7 @@ Integrated_SED takes the mean value of the pixel intensities in the subtracted r
 PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting. The saved solutions take up about 2.4 GiBs and so are not immediately apart of the repo. This code will have to be run before using other code that depends on these solutions. 
   
 We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.   
-The results can be found in the table below:  
+  
 #### The Table below sums the solutions for every pixel.  
 The error is summed using a frobenius norm, where all the elements in the matrix are squared and summed before the square root is taken. The error in this table is very high because some of the pixels fall below the sky noise level and so are detection limited. They can therefore be fit with spurious errors. In effect, the error of a very small number of pixels dominates the error in all other pixels.   
   
