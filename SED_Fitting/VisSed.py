@@ -19,7 +19,7 @@ plot_interactive_pixbypix = False
 # Plot 4 Background Removed and Convolved/Regridded to 160 images.
 plot_imgs = False
 # Plot Temperature, Warm and Cold dust mass maps.
-plot_maps = True
+plot_maps = False
 # Plot Temperature Map for Detection Limit. 
 # Can also turn on use_limit as look at the other plots.
 plot_Selecttmap = False
@@ -35,7 +35,8 @@ plot_SelectContour = False
 generate_SN = False
 # Plot SEDs For Warm Mass Peak and two blobs. 
 plot_SelectSED = False
-
+# Plot outline of template on summed snrs
+plot_template = True
 ###########
 ## Files ##
 ###########
@@ -81,10 +82,10 @@ intervals = [1,4,9]
 # Get SNR data, the physical area of each SNR, and the average pixel intensity
 data = []; Areas = []; AverageIntensities = np.zeros(4)
 for i in range(4):
-    AverageIntensity, Area = Eqs.AverageSED(files[i])
-    data.append(fits.open(files[i])[0].data)
-    Areas.append(Area)
-    AverageIntensities[i] = AverageIntensity
+	AverageIntensity, Area = Eqs.AverageSED(files[i])
+	data.append(fits.open(files[i])[0].data)
+	Areas.append(Area)
+	AverageIntensities[i] = AverageIntensity
 
 # Get the error associated with each intensity
 AverageError = Eqs.error(AverageIntensities)
@@ -93,19 +94,18 @@ AverageError = Eqs.error(AverageIntensities)
 # Load pixel by pixel files #
 #############################
 
-Pix_Total_SED = np.load("Sols/PixbyPix/Total_SED.npy");
 Pix_Warm_SED =  np.load("Sols/PixbyPix/Warm_SED.npy")
 Pix_Cold_SED =  np.load("Sols/PixbyPix/Cold_SED.npy")
 
 # Temperature                                         
-Pix_Temp = np.loadtxt("Sols/PixbyPix/Temperature.txt"); 
+Pix_Temp = np.loadtxt("Sols/PixbyPix/Temperature.txt")
 
 # Mass 
-Pix_Warm_Mass = np.loadtxt("Sols/PixbyPix/WarmMass.txt");
-Pix_Cold_Mass = np.loadtxt("Sols/PixbyPix/ColdMass.txt");   
+Pix_Warm_Mass = np.loadtxt("Sols/PixbyPix/WarmMass.txt")
+Pix_Cold_Mass = np.loadtxt("Sols/PixbyPix/ColdMass.txt")   
 
 # Chi Squared Maps                            
-Pix_chisqrd = np.loadtxt("Sols/PixbyPix/ChiSquared.txt"); 
+Pix_chisqrd = np.loadtxt("Sols/PixbyPix/ChiSquared.txt")
 
 #########################
 # Load integrated files #
@@ -121,75 +121,75 @@ total_sed = cold_sed + warm_sed
 # Load Template #
 #################	
 
-template = np.loadtxt("Sols/Template.txt")
+template = np.loadtxt("Sols/Template_3.txt")
 
 ##########
 # Plot   #
 ##########
 if plot_integrated:
-    fig = plt.figure(figsize=(11,8))
-    plot = fig.add_subplot(111)
-    # Plot SEDs
-    plot.plot(lam,total_sed,color="#424186")
-    plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
-    plot.plot(lam,cold_sed,color="#23A883")
-    # Plot Measured Values
-    plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
-    # Plot Labels
-    plot.set_xlabel("Wavelength ($\mu m$)",size=18)
-    plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
-    plot.set_title("Average Spectral Energy Distribution",size=20)
-    plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
-    
-    plot.tick_params(axis='both', which='major', labelsize=16)
-    plot.tick_params(axis='both', which='minor', labelsize=14)
-    
-    plot.grid(color='white',linestyle='-')
-    plot.set_facecolor("#EAEAF2")
+	fig = plt.figure(figsize=(11,8))
+	plot = fig.add_subplot(111)
+	# Plot SEDs
+	plot.plot(lam,total_sed,color="#424186")
+	plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
+	plot.plot(lam,cold_sed,color="#23A883")
+	# Plot Measured Values
+	plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
+	# Plot Labels
+	plot.set_xlabel("Wavelength ($\mu m$)",size=18)
+	plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
+	plot.set_title("Average Spectral Energy Distribution",size=20)
+	plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
+	
+	plot.tick_params(axis='both', which='major', labelsize=16)
+	plot.tick_params(axis='both', which='minor', labelsize=14)
+	
+	plot.grid(color='white',linestyle='-')
+	plot.set_facecolor("#EAEAF2")
 
-    print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
-    if save:
-        plt.savefig("AverageSED.png")
+	print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
+	if save:
+		plt.savefig("AverageSED.png")
 
 if plot_integrated_ChiSquaredConfidence:
 
-    def ChiSquaredMap(Map,interval):
-        Map = np.copy(Map)
-        # Change everything outside the interval to NaN.
-        R,C = np.where(Map > (chi_squared + interval))
-        Map[R,C] = np.nan 
-        return np.copy(Map)
+	def ChiSquaredMap(Map,interval):
+		Map = np.copy(Map)
+		# Change everything outside the interval to NaN.
+		R,C = np.where(Map > (chi_squared + interval))
+		Map[R,C] = np.nan 
+		return np.copy(Map)
 
-    f, axes = plt.subplots(3,2)
-    
-    # What the elements actually represent on an axis
-    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
-                    np.where(np.isclose(ColdTemp,temp))[0][0],
-                        np.where(np.isclose(ColdMass,cold_mass))[0][0]]
+	f, axes = plt.subplots(3,2)
+	
+	# What the elements actually represent on an axis
+	physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
+					np.where(np.isclose(ColdTemp,temp))[0][0],
+						np.where(np.isclose(ColdMass,cold_mass))[0][0]]
 
-    physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
-                    np.where(np.isclose(WarmMass,warm_mass))[0][0],
-                        np.where(np.isclose(ColdTemp,temp))[0][0]]
-    
-    titles = ["68.3% Confidence","95.4% Confidence"]
-    ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
-    xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
-    
-    # Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
-    chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
-                            np.copy(chi_squared_cube)[:,:,physical_X[0]],
-                                np.copy(chi_squared_cube)[physical_Y[0],:,:]]
-    
-    for i in range(3):
-        for j in range(2):
-            img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
-            axes[i,j].imshow(img)
-            axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
-            axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
-            axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
+	physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
+					np.where(np.isclose(WarmMass,warm_mass))[0][0],
+						np.where(np.isclose(ColdTemp,temp))[0][0]]
+	
+	titles = ["68.3% Confidence","95.4% Confidence"]
+	ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
+	xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
+	
+	# Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
+	chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
+							np.copy(chi_squared_cube)[:,:,physical_X[0]],
+								np.copy(chi_squared_cube)[physical_Y[0],:,:]]
+	
+	for i in range(3):
+		for j in range(2):
+			img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
+			axes[i,j].imshow(img)
+			axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
+			axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
+			axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
    
-    axes[0,0].set_title(titles[0])
-    axes[0,1].set_title(titles[1])  
+	axes[0,0].set_title(titles[0])
+	axes[0,1].set_title(titles[1])  
 if plot_interactive_pixbypix:
 
 	f, (ax,bx) = plt.subplots(1,2)
@@ -711,9 +711,21 @@ if plot_SelectSED:
 		plots[i].set_facecolor("#EAEAF2")
 		plt.legend()
 	
-	
+if plot_template:
+		r,c = np.where(template == 0)
+		x = c - 0.5; y = r - 0.5
+		X = []; Y = []
+		for i in range(len(x)):
+			if x[i] < 137 and x[i] > 120:
+				X.append(x[i])
+			if y[i] < 128 and y[i] > 111:
+				Y.append(y[i])
 
-	
-	
+		fig,ax = plt.subplots(1)
+		ax.imshow(data[0])
+		rect = Rectangle((X[0],Y[0]),1,1,linewidth=1,edgecolor='r',facecolor='none')
+		ax.add_patch(rect)
+		ax.set_ylim(111,128)
+		ax.set_xlim(120,137)
 
 plt.show()
