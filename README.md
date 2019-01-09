@@ -63,7 +63,7 @@ More information about this equation including the derivation and units can be f
 
 ![equation](https://latex.codecogs.com/gif.latex?B_\nu(\nu,T)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT}-1})
 
-To determine the error to consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
+To determine the error we consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
 
 ### Integrated SED
 Integrated_SED takes the mean value of the pixel intensities in the subtracted remnant at 24, 70, 100, and 160 microns and fits an SED to those values. The result is a cold dust mass of 0.1 Solar Mass, a warm dust component of 3.98e-05 Solar Mass, and a temperature of 35 K. For convenience, the results and the chi squared confidence intervals of the fit are tabled below.  
