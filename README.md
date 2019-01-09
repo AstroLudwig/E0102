@@ -44,7 +44,7 @@ The scale factor we solve for is based on the median of the ratio of an annulus 
 We adjust the scale factor to meet the condition that a region, which is generally over subtracted in each image, should ideally be close to zero with any negative intensities the result of noise in the image. We use the median of the ratio as an intial guess and then define a region, centered at RA, DEC = 1h 4m 3.54s -72d 01m 37.55s, with a radius of 3". This is about 4 to 9 pixels depending on the image. This corrects the median by 16% of the initial guess. This adjustment accounts for the fact that there is no constant temperature in the image and that high intensities may be over accounted for in the initial guess.
 ### E0102, Reduced, Convolved, Regridded  
 
-<img src="https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Plots/E0102_Regrid_Convolved.png" alt="E0102" width="400" height="300"></div>
+<img src="https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Plots/E0102_Regrid_Convolved.png" alt="E0102" width="450" height="400"></div>
 
 This is the result of all the background removal. The color min and max is the same in all images. This clearly shows why early measurements of E0102 at 24 microns underestimated the amount of dust present in this remnant.   
 ## Spectral Energy Distribution (SED) Fitting
@@ -66,7 +66,7 @@ To determine the error to consider during our fit we take a calibration error of
 ### Integrated SED
 Integrated_SED takes the mean value of the pixel intensities in the subtracted remnant at 24, 70, 100, and 160 microns and fits an SED to those values. The result is a cold dust mass of 0.1 Solar Mass, a warm dust component of 3.98e-05 Solar Mass, and a temperature of 35 K. For convenience, the results and the chi squared confidence intervals of the fit are tabled below.  
 
-![equation](https://i.ibb.co/GWrnRTQ/result.png)
+![Integrated](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/Integrated.png)
 
 ### Pixel by Pixel SED
 PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting. The saved solutions take up about 2.4 GiBs and so are not immediately apart of the repo. This code will have to be run before using other code that depends on these solutions. 
