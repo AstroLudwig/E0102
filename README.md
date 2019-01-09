@@ -69,7 +69,7 @@ Integrated_SED takes the mean value of the pixel intensities in the subtracted r
 ![equation](https://i.ibb.co/GWrnRTQ/result.png)
 
 ### Pixel by Pixel SED
-PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting.
+PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting. The saved solutions take up about 2.4 GiBs and so are not immediately apart of the repo. This code will have to be run before using other code that depends on these solutions. 
   
 We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.   
 The results can be found in the table below:  
@@ -80,5 +80,7 @@ During SED Fitting, we are fitting 4 data points with 3 parameters. We save a ch
 ![Table](https://imgur.com/UQqtGyG.png)
   
 This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the Frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
+### Plotting 
+The majority of plots are handled in VisSed.py and require that integrated SED and Pixel by Pixel SED be run prior to its use. 
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.

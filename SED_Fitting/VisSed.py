@@ -17,9 +17,9 @@ plot_integrated_ChiSquaredConfidence = False
 # Plot Pixel by Pixel SED. Interactive
 plot_interactive_pixbypix = False
 # Plot 4 Background Removed and Convolved/Regridded to 160 images.
-plot_imgs = True
+plot_imgs = False
 # Plot Temperature, Warm and Cold dust mass maps.
-plot_maps = False
+plot_maps = True
 # Plot Temperature Map for Detection Limit. 
 # Can also turn on use_limit as look at the other plots.
 plot_Selecttmap = False
@@ -259,8 +259,51 @@ if plot_imgs:
 	f.set_size_inches(5, 5)
 	plt.subplots_adjust(wspace=-.15,hspace=-.1,top=1,bottom=0,right=1,left=0)
 	plt.savefig("Plots/E0102_Regrid_Convolved.png",dpi=200, bbox_inches='tight', pad_inches = 0 )
-	#(top = 1, bottom = 0, right = 1, left = 0, 
-    #        hspace = 0, wspace = 0)
+
+
+
+if plot_maps: # Temperature Map
+	# Prep Temp Map for Mean Measurement by only including relevant pixels
+	a,b = np.shape(Pix_Temp)
+	temp = np.copy(Pix_Temp)
+	for i in range(a):
+		for j in range(b):
+			# If a value is the temperature map is exactly 0
+			# (i.e. falls out of the radius) then make it a nan
+			if Pix_Temp[i,j] == 0.:
+				temp[i,j] = np.nan
+				
+	g, (ax,bx,cx) = plt.subplots(1,3)
+	tim = ax.imshow(Pix_Temp ,vmin = np.nanmin(temp), vmax = np.nanmax(temp))
+	ax.set_title(("Temperature Map.\n Average is {}").format(int(np.nanmean(temp))))
+	ax.set_ylim(110,130)
+	ax.set_xlim(115,140)
+	ax.axis("off")
+	g.colorbar(tim, ax=ax)
+
+	wim = bx.imshow(Pix_Warm_Mass ,vmin = np.min(Pix_Warm_Mass), vmax = np.max(Pix_Warm_Mass))
+	bx.set_title(("Warm Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Warm_Mass)))
+	bx.set_ylim(110,130)
+	bx.set_xlim(115,140)
+	bx.axis("off")
+	g.colorbar(wim, ax=bx)
+
+	cim = cx.imshow(Pix_Cold_Mass ,vmin = np.min(Pix_Cold_Mass), vmax = np.max(Pix_Cold_Mass))
+	cx.set_title(("Cold Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Cold_Mass)))
+	cx.set_ylim(110,130)
+	cx.set_xlim(115,140)
+	cx.axis("off")
+	g.colorbar(cim, ax=cx)
+
+
+if plot_Selecttmap: # Selected Temperature Map
+	SelTmap = np.loadtxt("Sols/2SigmaTemperatureMap.txt")
+	plt.figure(4)
+	plt.imshow(SelTmap,vmin = 25, vmax = 50)
+	plt.title("Temperature Map")
+	plt.ylim(110,130)
+	plt.xlim(115,140)
+
 if plot_chi:
 
 	T = np.arange(2,70,1) # Kelvin
@@ -331,46 +374,6 @@ if plot_chi:
 
 		
 	cid = f.canvas.mpl_connect('button_press_event', onclick)	
-
-if plot_maps: # Temperature Map
-	# Prep Temp Map for Mean Measurement
-	a,b = np.shape(Pix_Temp)
-	temp = np.copy(Pix_Temp)
-	for i in range(a):
-		for j in range(b):
-			if Pix_Temp[i,j] == 0.:
-				temp[i,j] = np.nan
-				
-	g, (ax,bx,cx) = plt.subplots(1,3)
-	tim = ax.imshow(Pix_Temp ,vmin = np.nanmin(temp), vmax = np.nanmax(temp))
-	ax.set_title(("Temperature Map.\n Average is {}").format(int(np.nanmean(temp))))
-	ax.set_ylim(110,130)
-	ax.set_xlim(115,140)
-	ax.axis("off")
-	g.colorbar(tim, ax=ax)
-
-	wim = bx.imshow(Pix_Warm_Mass ,vmin = np.min(Pix_Warm_Mass), vmax = np.max(Pix_Warm_Mass))
-	bx.set_title(("Warm Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Warm_Mass)))
-	bx.set_ylim(110,130)
-	bx.set_xlim(115,140)
-	bx.axis("off")
-	g.colorbar(wim, ax=bx)
-
-	cim = cx.imshow(Pix_Cold_Mass ,vmin = np.min(Pix_Cold_Mass), vmax = np.max(Pix_Cold_Mass))
-	cx.set_title(("Cold Mass Map.\n Sum is {:2f}").format(np.sum(Pix_Cold_Mass)))
-	cx.set_ylim(110,130)
-	cx.set_xlim(115,140)
-	cx.axis("off")
-	g.colorbar(cim, ax=cx)
-
-
-if plot_Selecttmap: # Selected Temperature Map
-	SelTmap = np.loadtxt("Sols/2SigmaTemperatureMap.txt")
-	plt.figure(4)
-	plt.imshow(SelTmap,vmin = 25, vmax = 50)
-	plt.title("Temperature Map")
-	plt.ylim(110,130)
-	plt.xlim(115,140)
 
 if plot_all:
 	if use_all or use_noBkgdErr:

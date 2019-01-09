@@ -16,13 +16,11 @@ import Eqs
 ## Switches ##
 ##############
 
-# Save Figures
-save = False
 # Running the pixel by pixel fit takes a while
 # Run once and save in text file
-calculate_data = False
+calculate_data = True
 # Load text files, print stats
-load_data = True
+load_data = False
 
 ###########
 ## Files ##
