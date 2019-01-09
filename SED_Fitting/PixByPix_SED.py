@@ -18,9 +18,9 @@ import Eqs
 
 # Running the pixel by pixel fit takes a while
 # Run once and save in text file
-calculate_data = True
+calculate_data = False
 # Load text files, print stats
-load_data = False
+load_data = True
 
 ###########
 ## Files ##
@@ -113,7 +113,7 @@ if load_data:
     ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy",)
     WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")
 
-    sigma_fit = 1
+    sigma_fit = 0 # 0 is 1 sigma, 1 is 2 sigma, 2 is 3 sigma. 
     # To get the error I'm calculating the frobenius norm of the interval map
     print("Total Mass "+str(np.sum(ColdMass_Map)+np.sum(WarmMass_Map))
         + " pm " + str(np.linalg.norm(ColdMass_Confidence[:,:,sigma_fit]+WarmMass_Confidence[:,:,sigma_fit],ord='fro')))
@@ -130,7 +130,7 @@ if load_data:
     print("...")
     
     # Create Detection Limited Template
-    n = 2
+    n = 3
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
     FlatData = np.sum(np.copy(DataCube),axis=2)
     FlatData[np.where(np.isnan(FlatData))] = 0
@@ -139,7 +139,7 @@ if load_data:
     Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
     
     # Save Template
-    np.savetxt("Sols/Template.txt",Template) 
+    np.savetxt("Sols/Template_2.txt",Template) 
 
     # Multiply it by Maps and then take Stats
     print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
