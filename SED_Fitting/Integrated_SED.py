@@ -10,8 +10,6 @@ import numpy as np
 import matplotlib.pyplot as plt 
 import Eqs
 
-<<<<<<< Updated upstream
-=======
 
 ##############
 ## Switches ##
@@ -62,7 +60,7 @@ WarmMass = 10**np.arange(-8,-3,.1)
 # Get SNR data, the physical area of each SNR, and the average pixel intensity
 data = []; Areas = []; AverageIntensities = np.zeros(4)
 for i in range(4):
-<<<<<<< Updated upstream
+
     AverageIntensity, Area = Eqs.AverageSED(files[i])
     data.append(fits.open(files[i])[0].data)
     Areas.append(Area)
@@ -86,8 +84,8 @@ print("*~~~~~~~~~~~~~~*")
 
 # 68.3%, 95.4% and 99.73%, or 1, 2 and 3 sigma 
 intervals = [1,4,9]
-=======
-    DataCube[:,:,i] = fits.open(files[i])[0].data 
+
+DataCube[:,:,i] = fits.open(files[i])[0].data 
 
 if calculate_data:
 
@@ -139,7 +137,7 @@ if load_data:
         + " pm " + str(np.linalg.norm(ColdMass_Confidence[:,:,sigma_fit]+WarmMass_Confidence[:,:,sigma_fit],ord='fro')))
 
     count_r, count_c = np.where(np.isfinite(DataCube[:,:,0]))
->>>>>>> Stashed changes
+
 
 for i in range(3):
     print("...")
