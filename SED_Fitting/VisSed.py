@@ -126,6 +126,7 @@ total_sed = cold_sed + warm_sed
 # Load Template #
 #################	
 
+template_2n_nan = np.loadtxt("Sols/Templates/Template_2_with_NaNs.txt")
 template_3n_nan = np.loadtxt("Sols/Templates/Template_3_with_NaNs.txt")
 
 ##########
@@ -717,9 +718,6 @@ if plot_SelectSED:
 		plt.legend()
 if plot_template: 
 
-	# Which pixels are being removed by the threshhold?
-	f, ax = plt.subplots(1)
-
 	box_r, box_c = np.where(template_3n_nan == 0)	
 	
 	boxes = []
@@ -728,15 +726,10 @@ if plot_template:
 		rect = Rectangle((x-.5,y-.5),1,1)
 		boxes.append(rect)
 
-	pc = PatchCollection(boxes,facecolor="none",edgecolor="red")
-
-
-	stacked_data = np.nansum(np.copy(data),axis=0)
-	ax.imshow(data[3],vmin=-1,vmax=8); ax.set_xlim(118,138); ax.set_ylim(110,130)
-	ax.add_collection(pc)
+	#pc = PatchCollection(boxes,facecolor="none",edgecolor="red")
 	
 	# What does the histogram of errors look like without the threshhold? 
-	sigma_fit = 0;# num_bins = 25
+	sigma_fit = 1;# num_bins = 25
 	# Load Stuff
 	Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy")[:,:,sigma_fit]
 	ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy")[:,:,sigma_fit] 
@@ -750,7 +743,22 @@ if plot_template:
 	Cold_err_clip = (ColdMass_Confidence * template_3n_nan)[(ColdMass_Confidence != 0) & (np.isfinite(ColdMass_Confidence))]
 	Warm_err_clip = (WarmMass_Confidence * template_3n_nan)[(WarmMass_Confidence != 0) & (np.isfinite(WarmMass_Confidence))]
 	
-	# Plots 
+	#########
+	# Plots #
+	#########
+
+	p = [data[3],Temperature_Confidence,ColdMass_Confidence,WarmMass_Confidence]
+	# Which pixels are being removed by the threshhold?
+	f, axs = plt.subplots(1,4)
+	t = ["24 Microns","Temperature Error Intervals","Cold Mass Error Intervals","Warm Mass Error Intervals"]
+	v = [0.5,1,8e-5,8e-9]; v_= [9,17,.01,8e-8]
+	for i in range(4):
+		pc = PatchCollection(boxes,facecolor="none",edgecolor="red")
+		p[i][p[i] == 0] = np.nan
+		axs[i].imshow(p[i],vmin=v[i],vmax=v_[i]); axs[i].set_xlim(118,138); axs[i].set_ylim(110,130)
+		axs[i].add_collection(pc); axs[i].axis('off'); axs[i].set_title(t[i])
+
+	f.suptitle("2 Sigma Error Distributions, Clipped by 3 * $\sigma_{sky}$")
 	g, axes = plt.subplots(3,2)
 
 	plots = [Temp_err,Temp_err_clip,Cold_err,Cold_err_clip,Warm_err,Warm_err_clip ]
@@ -761,14 +769,16 @@ if plot_template:
 	axes[0,1].set_title("After Clipping")
 
 
-	def histplot(array,row,col):
-		if row == 1 and col == 0:
-			num_bins = 13
-		elif row == 2 and col == 0: 
-			num_bins = 10
-		else:
-			# Freedman Diaconis rule for number of bins
-			num_bins = int((np.max(array) - np.min(array)) / (2 * iqr(array) * len(array)**(-1/3)))
+	def histplot(array,row,col,num_bins):
+		# if row == 0 and col == 1:
+		# 	num_bins = 9
+		# if row == 1 and col == 0:
+		# 	num_bins = 15
+		# elif row == 2 and col == 0: 
+		# 	num_bins = 6
+		# else:
+		# 	# Freedman Diaconis rule for number of bins
+		# 	num_bins = int((np.max(array) - np.min(array)) / (2 * iqr(array) * len(array)**(-1/3)))
 		print(num_bins)
 		# Plot histogram
 		n, bins, patches = axes[row,col].hist(array,bins=num_bins,density=True)
@@ -778,9 +788,9 @@ if plot_template:
 		# Plot Fit
 		axes[row,col].plot(bins, hist_y, '--')
 
-	count = 0 
+	count = 0 ; nbins = [11,7,15,15,6,8]
 	for i in range(3):
 		for j in range(2):
-			histplot(plots[count],i,j)
+			histplot(plots[count],i,j,nbins[count])
 			count += 1
 plt.show()

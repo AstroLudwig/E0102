@@ -135,7 +135,7 @@ if load_data:
     
     # Create Detection Limited Template
     # =====================================================================
-    n = 3 # Sets the threshhold for what factor times the noise is removed
+    n = 2 # Sets the threshhold for what factor times the noise is removed
     # =====================================================================
 
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')

@@ -25,7 +25,6 @@ load_data = True
 # Plot SEDS of 24 micron hot spot 
 # and the 2 blobs at longer wavelengths
 plot_selectedpix = True
->>>>>>> Stashed changes
 ###########
 ## Files ##
 ###########
