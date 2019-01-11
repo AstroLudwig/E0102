@@ -113,7 +113,11 @@ if load_data:
     ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy",)
     WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")
 
+    # Confidence Interval
+    # ========================================================
     sigma_fit = 0 # 0 is 1 sigma, 1 is 2 sigma, 2 is 3 sigma. 
+    # ========================================================
+
     # To get the error I'm calculating the frobenius norm of the interval map
     print("Total Mass "+str(np.sum(ColdMass_Map)+np.sum(WarmMass_Map))
         + " pm " + str(np.linalg.norm(ColdMass_Confidence[:,:,sigma_fit]+WarmMass_Confidence[:,:,sigma_fit],ord='fro')))
@@ -130,17 +134,26 @@ if load_data:
     print("...")
     
     # Create Detection Limited Template
-    n = 3
+    # =====================================================================
+    n = 3 # Sets the threshhold for what factor times the noise is removed
+    # =====================================================================
+
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
     FlatData = np.sum(np.copy(DataCube),axis=2)
-    FlatData[np.where(np.isnan(FlatData))] = 0
+    nan_r, nan_c = np.where(np.isnan(FlatData))
+    FlatData[nan_r,nan_c] = 0
     Template = np.copy(FlatData)
     Template[np.where(np.copy(FlatData) > n * np.sum(Noise))] = 1
     Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
     
-    # Save Template
-    np.savetxt("Sols/Template_2.txt",Template) 
+    # Save Template, without nans
+    np.savetxt("Sols/Template_"+str(n)+".txt",Template) 
 
+    # Save Template, with nans, useful later when we're drawing boxes around the detection limited pixels
+    nan_Template = np.copy(Template)
+    nan_Template[nan_r,nan_c] = np.nan
+    np.savetxt("Sols/Template_"+str(n)+"_with_NaNs.txt",nan_Template)
+    
     # Multiply it by Maps and then take Stats
     print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
             + " pm " + str(np.linalg.norm((np.copy(ColdMass_Confidence[:,:,sigma_fit])+np.copy(WarmMass_Confidence[:,:,sigma_fit]))*Template,ord='fro')))
