@@ -2,8 +2,12 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt 
 from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 import Eqs
 import seaborn as sns
+from scipy.stats import norm
+import matplotlib.mlab as mlab
+from scipy.stats import iqr
 ##############
 ## Switches ##
 ##############
@@ -19,7 +23,7 @@ plot_interactive_pixbypix = False
 # Plot 4 Background Removed and Convolved/Regridded to 160 images.
 plot_imgs = False
 # Plot Temperature, Warm and Cold dust mass maps.
-plot_maps = True
+plot_maps = False
 # Plot Temperature Map for Detection Limit. 
 # Can also turn on use_limit as look at the other plots.
 plot_Selecttmap = False
@@ -35,6 +39,8 @@ plot_SelectContour = False
 generate_SN = False
 # Plot SEDs For Warm Mass Peak and two blobs. 
 plot_SelectSED = False
+# Plot Templates
+plot_template = True
 
 ###########
 ## Files ##
@@ -81,10 +87,10 @@ intervals = [1,4,9]
 # Get SNR data, the physical area of each SNR, and the average pixel intensity
 data = []; Areas = []; AverageIntensities = np.zeros(4)
 for i in range(4):
-    AverageIntensity, Area = Eqs.AverageSED(files[i])
-    data.append(fits.open(files[i])[0].data)
-    Areas.append(Area)
-    AverageIntensities[i] = AverageIntensity
+	AverageIntensity, Area = Eqs.AverageSED(files[i])
+	data.append(fits.open(files[i])[0].data)
+	Areas.append(Area)
+	AverageIntensities[i] = AverageIntensity
 
 # Get the error associated with each intensity
 AverageError = Eqs.error(AverageIntensities)
@@ -121,75 +127,75 @@ total_sed = cold_sed + warm_sed
 # Load Template #
 #################	
 
-template = np.loadtxt("Sols/Template.txt")
+template_3n_nan = np.loadtxt("Sols/Templates/Template_3_with_NaNs.txt")
 
 ##########
 # Plot   #
 ##########
 if plot_integrated:
-    fig = plt.figure(figsize=(11,8))
-    plot = fig.add_subplot(111)
-    # Plot SEDs
-    plot.plot(lam,total_sed,color="#424186")
-    plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
-    plot.plot(lam,cold_sed,color="#23A883")
-    # Plot Measured Values
-    plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
-    # Plot Labels
-    plot.set_xlabel("Wavelength ($\mu m$)",size=18)
-    plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
-    plot.set_title("Average Spectral Energy Distribution",size=20)
-    plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
-    
-    plot.tick_params(axis='both', which='major', labelsize=16)
-    plot.tick_params(axis='both', which='minor', labelsize=14)
-    
-    plot.grid(color='white',linestyle='-')
-    plot.set_facecolor("#EAEAF2")
+	fig = plt.figure(figsize=(11,8))
+	plot = fig.add_subplot(111)
+	# Plot SEDs
+	plot.plot(lam,total_sed,color="#424186")
+	plot.plot(lam,warm_sed,color="#84D44B",ls='dashed') 
+	plot.plot(lam,cold_sed,color="#23A883")
+	# Plot Measured Values
+	plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
+	# Plot Labels
+	plot.set_xlabel("Wavelength ($\mu m$)",size=18)
+	plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
+	plot.set_title("Average Spectral Energy Distribution",size=20)
+	plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
+	
+	plot.tick_params(axis='both', which='major', labelsize=16)
+	plot.tick_params(axis='both', which='minor', labelsize=14)
+	
+	plot.grid(color='white',linestyle='-')
+	plot.set_facecolor("#EAEAF2")
 
-    print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
-    if save:
-        plt.savefig("AverageSED.png")
+	print(("Temp {} Cold Mass {} Warm Mass {} Total Mass {} Chi Squared {} ").format(temp,cold_mass,warm_mass,cold_mass+warm_mass,chi_squared))
+	if save:
+		plt.savefig("AverageSED.png")
 
 if plot_integrated_ChiSquaredConfidence:
 
-    def ChiSquaredMap(Map,interval):
-        Map = np.copy(Map)
-        # Change everything outside the interval to NaN.
-        R,C = np.where(Map > (chi_squared + interval))
-        Map[R,C] = np.nan 
-        return np.copy(Map)
+	def ChiSquaredMap(Map,interval):
+		Map = np.copy(Map)
+		# Change everything outside the interval to NaN.
+		R,C = np.where(Map > (chi_squared + interval))
+		Map[R,C] = np.nan 
+		return np.copy(Map)
 
-    f, axes = plt.subplots(3,2)
-    
-    # What the elements actually represent on an axis
-    physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
-                    np.where(np.isclose(ColdTemp,temp))[0][0],
-                        np.where(np.isclose(ColdMass,cold_mass))[0][0]]
+	f, axes = plt.subplots(3,2)
+	
+	# What the elements actually represent on an axis
+	physical_X = [np.where(np.isclose(ColdMass,cold_mass))[0][0],
+					np.where(np.isclose(ColdTemp,temp))[0][0],
+						np.where(np.isclose(ColdMass,cold_mass))[0][0]]
 
-    physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
-                    np.where(np.isclose(WarmMass,warm_mass))[0][0],
-                        np.where(np.isclose(ColdTemp,temp))[0][0]]
-    
-    titles = ["68.3% Confidence","95.4% Confidence"]
-    ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
-    xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
-    
-    # Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
-    chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
-                            np.copy(chi_squared_cube)[:,:,physical_X[0]],
-                                np.copy(chi_squared_cube)[physical_Y[0],:,:]]
-    
-    for i in range(3):
-        for j in range(2):
-            img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
-            axes[i,j].imshow(img)
-            axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
-            axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
-            axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
+	physical_Y = [np.where(np.isclose(WarmMass,warm_mass))[0][0],
+					np.where(np.isclose(WarmMass,warm_mass))[0][0],
+						np.where(np.isclose(ColdTemp,temp))[0][0]]
+	
+	titles = ["68.3% Confidence","95.4% Confidence"]
+	ylabels = ["Warm Dust Mass M$_\odot$","Warm Dust Mass M$_\odot$","Temperature K",]
+	xlabels = ["Cold Dust Mass M$_\odot$", "Temperature K", "Cold Dust Mass M$_\odot$"]
+	
+	# Temperature Slice, Cold Mass Slice, Warm Mass Slice at solutions
+	chi_squared_slices = [np.copy(chi_squared_cube)[:,physical_X[1],:],
+							np.copy(chi_squared_cube)[:,:,physical_X[0]],
+								np.copy(chi_squared_cube)[physical_Y[0],:,:]]
+	
+	for i in range(3):
+		for j in range(2):
+			img = ChiSquaredMap(chi_squared_slices[i],intervals[j])
+			axes[i,j].imshow(img)
+			axes[i,j].scatter(physical_X[i],physical_Y[i],s=5,c='r')
+			axes[i,j].set_ylim(physical_Y[i]-10,physical_Y[i]+10); axes[i,j].set_xlim(physical_X[i]-10,physical_X[i]+10);
+			axes[i,j].set_xlabel(xlabels[i]); axes[i,j].set_ylabel(ylabels[i])
    
-    axes[0,0].set_title(titles[0])
-    axes[0,1].set_title(titles[1])  
+	axes[0,0].set_title(titles[0])
+	axes[0,1].set_title(titles[1])  
 if plot_interactive_pixbypix:
 
 	f, (ax,bx) = plt.subplots(1,2)
@@ -710,10 +716,72 @@ if plot_SelectSED:
 		plots[i].grid(color='white',linestyle='-')
 		plots[i].set_facecolor("#EAEAF2")
 		plt.legend()
-	
-	
+if plot_template: 
 
-	
-	
+	# Which pixels are being removed by the threshhold?
+	f, ax = plt.subplots(1)
 
+	box_r, box_c = np.where(template_3n_nan == 0)	
+	
+	boxes = []
+	for x,y in zip(box_c, box_r): 
+
+		rect = Rectangle((x-.5,y-.5),1,1)
+		boxes.append(rect)
+
+	pc = PatchCollection(boxes,facecolor="none",edgecolor="red")
+
+
+	stacked_data = np.nansum(np.copy(data),axis=0)
+	ax.imshow(data[3],vmin=-1,vmax=8); ax.set_xlim(118,138); ax.set_ylim(110,130)
+	ax.add_collection(pc)
+	
+	# What does the histogram of errors look like without the threshhold? 
+	sigma_fit = 0;# num_bins = 25
+	# Load Stuff
+	Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy")[:,:,sigma_fit]
+	ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy")[:,:,sigma_fit] 
+	WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")[:,:,sigma_fit] 
+
+	Temp_err = Temperature_Confidence[(Temperature_Confidence != 0) & (np.isfinite(Temperature_Confidence))]
+	Cold_err = ColdMass_Confidence[(ColdMass_Confidence != 0) & (np.isfinite(ColdMass_Confidence))]
+	Warm_err = WarmMass_Confidence[(WarmMass_Confidence != 0) & (np.isfinite(WarmMass_Confidence))]
+
+	Temp_err_clip = (Temperature_Confidence * template_3n_nan)[(Temperature_Confidence != 0) & (np.isfinite(Temperature_Confidence))]
+	Cold_err_clip = (ColdMass_Confidence * template_3n_nan)[(ColdMass_Confidence != 0) & (np.isfinite(ColdMass_Confidence))]
+	Warm_err_clip = (WarmMass_Confidence * template_3n_nan)[(WarmMass_Confidence != 0) & (np.isfinite(WarmMass_Confidence))]
+	
+	# Plots 
+	g, axes = plt.subplots(3,2)
+
+	plots = [Temp_err,Temp_err_clip,Cold_err,Cold_err_clip,Warm_err,Warm_err_clip ]
+	axes[1,0].set_ylabel("Cold Mass"); axes[2,0].set_ylabel("Warm Mass"); axes[0,0].set_ylabel("Temperature")
+
+	g.suptitle("Chi Squared Confidence Intervals", fontsize=16)
+	axes[0,0].set_title("Before Clipping")
+	axes[0,1].set_title("After Clipping")
+
+
+	def histplot(array,row,col):
+		if row == 1 and col == 0:
+			num_bins = 13
+		elif row == 2 and col == 0: 
+			num_bins = 10
+		else:
+			# Freedman Diaconis rule for number of bins
+			num_bins = int((np.max(array) - np.min(array)) / (2 * iqr(array) * len(array)**(-1/3)))
+		print(num_bins)
+		# Plot histogram
+		n, bins, patches = axes[row,col].hist(array,bins=num_bins,density=True)
+		# Fit histogram
+		(mu, sigma) = norm.fit(array)
+		hist_y = mlab.normpdf(bins,mu,sigma)
+		# Plot Fit
+		axes[row,col].plot(bins, hist_y, '--')
+
+	count = 0 
+	for i in range(3):
+		for j in range(2):
+			histplot(plots[count],i,j)
+			count += 1
 plt.show()

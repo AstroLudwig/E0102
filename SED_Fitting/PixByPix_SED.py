@@ -109,8 +109,8 @@ if load_data:
     ColdMass_Map = np.loadtxt("Sols/PixbyPix/ColdMass.txt"); WarmMass_Map = np.loadtxt("Sols/PixbyPix/WarmMass.txt")
     Temperature_Map = np.loadtxt("Sols/PixbyPix/Temperature.txt"); Chi_Map = np.loadtxt("Sols/PixbyPix/ChiSquared.txt")
     WarmSed_Cube = np.load("Sols/PixbyPix/Warm_SED.npy"); ColdSed_Cube = np.load("Sols/PixbyPix/Cold_SED.npy");
-    Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy"); 
-    ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy",)
+    Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy") 
+    ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy")
     WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")
 
     # Confidence Interval
@@ -147,12 +147,12 @@ if load_data:
     Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
     
     # Save Template, without nans
-    np.savetxt("Sols/Template_"+str(n)+".txt",Template) 
+    np.savetxt("Sols/Templates/Template_"+str(n)+".txt",Template) 
 
     # Save Template, with nans, useful later when we're drawing boxes around the detection limited pixels
     nan_Template = np.copy(Template)
     nan_Template[nan_r,nan_c] = np.nan
-    np.savetxt("Sols/Template_"+str(n)+"_with_NaNs.txt",nan_Template)
+    np.savetxt("Sols/Templates/Template_"+str(n)+"_with_NaNs.txt",nan_Template)
     
     # Multiply it by Maps and then take Stats
     print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
