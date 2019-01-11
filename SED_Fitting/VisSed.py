@@ -2,8 +2,12 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt 
 from matplotlib.patches import Rectangle
+from matplotlib.collections import PatchCollection
 import Eqs
 import seaborn as sns
+from scipy.stats import norm
+import matplotlib.mlab as mlab
+from scipy.stats import iqr
 ##############
 ## Switches ##
 ##############
@@ -35,8 +39,9 @@ plot_SelectContour = False
 generate_SN = False
 # Plot SEDs For Warm Mass Peak and two blobs. 
 plot_SelectSED = False
-# Plot outline of template on summed snrs
+# Plot Templates
 plot_template = True
+
 ###########
 ## Files ##
 ###########
@@ -121,7 +126,7 @@ total_sed = cold_sed + warm_sed
 # Load Template #
 #################	
 
-template = np.loadtxt("Sols/Template_3.txt")
+template_3n_nan = np.loadtxt("Sols/Templates/Template_3_with_NaNs.txt")
 
 ##########
 # Plot   #
@@ -710,22 +715,72 @@ if plot_SelectSED:
 		plots[i].grid(color='white',linestyle='-')
 		plots[i].set_facecolor("#EAEAF2")
 		plt.legend()
+if plot_template: 
+
+	# Which pixels are being removed by the threshhold?
+	f, ax = plt.subplots(1)
+
+	box_r, box_c = np.where(template_3n_nan == 0)	
 	
-if plot_template:
-		r,c = np.where(template == 0)
-		x = c - 0.5; y = r - 0.5
-		X = []; Y = []
-		for i in range(len(x)):
-			if x[i] < 137 and x[i] > 120:
-				X.append(x[i])
-			if y[i] < 128 and y[i] > 111:
-				Y.append(y[i])
+	boxes = []
+	for x,y in zip(box_c, box_r): 
 
-		fig,ax = plt.subplots(1)
-		ax.imshow(data[0])
-		rect = Rectangle((X[0],Y[0]),1,1,linewidth=1,edgecolor='r',facecolor='none')
-		ax.add_patch(rect)
-		ax.set_ylim(111,128)
-		ax.set_xlim(120,137)
+		rect = Rectangle((x-.5,y-.5),1,1)
+		boxes.append(rect)
 
+	pc = PatchCollection(boxes,facecolor="none",edgecolor="red")
+
+
+	stacked_data = np.nansum(np.copy(data),axis=0)
+	ax.imshow(data[3],vmin=-1,vmax=8); ax.set_xlim(118,138); ax.set_ylim(110,130)
+	ax.add_collection(pc)
+	
+	# What does the histogram of errors look like without the threshhold? 
+	sigma_fit = 0;# num_bins = 25
+	# Load Stuff
+	Temperature_Confidence = np.load("Sols/PixbyPix/Temperature_Confidence.npy")[:,:,sigma_fit]
+	ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy")[:,:,sigma_fit] 
+	WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")[:,:,sigma_fit] 
+
+	Temp_err = Temperature_Confidence[(Temperature_Confidence != 0) & (np.isfinite(Temperature_Confidence))]
+	Cold_err = ColdMass_Confidence[(ColdMass_Confidence != 0) & (np.isfinite(ColdMass_Confidence))]
+	Warm_err = WarmMass_Confidence[(WarmMass_Confidence != 0) & (np.isfinite(WarmMass_Confidence))]
+
+	Temp_err_clip = (Temperature_Confidence * template_3n_nan)[(Temperature_Confidence != 0) & (np.isfinite(Temperature_Confidence))]
+	Cold_err_clip = (ColdMass_Confidence * template_3n_nan)[(ColdMass_Confidence != 0) & (np.isfinite(ColdMass_Confidence))]
+	Warm_err_clip = (WarmMass_Confidence * template_3n_nan)[(WarmMass_Confidence != 0) & (np.isfinite(WarmMass_Confidence))]
+	
+	# Plots 
+	g, axes = plt.subplots(3,2)
+
+	plots = [Temp_err,Temp_err_clip,Cold_err,Cold_err_clip,Warm_err,Warm_err_clip ]
+	axes[1,0].set_ylabel("Cold Mass"); axes[2,0].set_ylabel("Warm Mass"); axes[0,0].set_ylabel("Temperature")
+
+	g.suptitle("Chi Squared Confidence Intervals", fontsize=16)
+	axes[0,0].set_title("Before Clipping")
+	axes[0,1].set_title("After Clipping")
+
+
+	def histplot(array,row,col):
+		if row == 1 and col == 0:
+			num_bins = 13
+		elif row == 2 and col == 0: 
+			num_bins = 10
+		else:
+			# Freedman Diaconis rule for number of bins
+			num_bins = int((np.max(array) - np.min(array)) / (2 * iqr(array) * len(array)**(-1/3)))
+		print(num_bins)
+		# Plot histogram
+		n, bins, patches = axes[row,col].hist(array,bins=num_bins,density=True)
+		# Fit histogram
+		(mu, sigma) = norm.fit(array)
+		hist_y = mlab.normpdf(bins,mu,sigma)
+		# Plot Fit
+		axes[row,col].plot(bins, hist_y, '--')
+
+	count = 0 
+	for i in range(3):
+		for j in range(2):
+			histplot(plots[count],i,j)
+			count += 1
 plt.show()
