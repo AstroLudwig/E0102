@@ -135,7 +135,7 @@ if load_data:
     
     # Create Detection Limited Template
     # =====================================================================
-    n = 2 # Sets the threshhold for what factor times the noise is removed
+    n = 0 # Sets the threshhold for what factor times the noise is removed
     # =====================================================================
 
     Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
@@ -147,13 +147,13 @@ if load_data:
     Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
     
     # Save Template, without nans
-    np.savetxt("Sols/Templates/Template_"+str(n)+".txt",Template) 
+ #   np.savetxt("Sols/Templates/Template_"+str(n)+".txt",Template) 
 
     # Save Template, with nans, useful later when we're drawing boxes around the detection limited pixels
     nan_Template = np.copy(Template)
     nan_Template[nan_r,nan_c] = np.nan
     np.savetxt("Sols/Templates/Template_"+str(n)+"_with_NaNs.txt",nan_Template)
-    
+
     # Multiply it by Maps and then take Stats
     print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
             + " pm " + str(np.linalg.norm((np.copy(ColdMass_Confidence[:,:,sigma_fit])+np.copy(WarmMass_Confidence[:,:,sigma_fit]))*Template,ord='fro')))
