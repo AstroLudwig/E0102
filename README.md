@@ -42,39 +42,56 @@ The scale factor we solve for is based on the median of the ratio of an annulus 
 ![equation](https://latex.codecogs.com/gif.latex?100&space;\mu&space;m&space;\text{&space;Background}=&space;70&space;\mu&space;m&space;\text{&space;Background}&space;\times&space;\Big(\frac{100\mu\text{m&space;Image}&space;}{70&space;\mu&space;m\text{&space;Background}&space;}\Big)_{Med})
   
 We adjust the scale factor to meet the condition that a region, which is generally over subtracted in each image, should ideally be close to zero with any negative intensities the result of noise in the image. We use the median of the ratio as an intial guess and then define a region, centered at RA, DEC = 1h 4m 3.54s -72d 01m 37.55s, with a radius of 3". This is about 4 to 9 pixels depending on the image. This corrects the median by 16% of the initial guess. This adjustment accounts for the fact that there is no constant temperature in the image and that high intensities may be over accounted for in the initial guess.
+### E0102, Reduced, Convolved, Regridded  
+
+<img src="https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Plots/E0102_Regrid_Convolved.png" alt="E0102" width="450" height="400"></div>
+
+This is the result of all the background removal. The color min and max is the same in all images. This clearly shows why early measurements of E0102 at 24 microns underestimated the amount of dust present in this remnant.   
 ## Spectral Energy Distribution (SED) Fitting
 ### Image Prep
 Everything we've done until now has been data reduction, now we take our measurements. We first need to convolve and regrid everything to the lowest resolution, the 160 micron image. We also further reduce the data here by removing everything outside of a 22" radius from the center RA, DEC = 1h 4m 2.1s -72d 01m 52.5s. Files are saved under Final Files and will be used for futher plotting and fitting purposes.
 ### Equations
 To fit our data to a Spectral Energy Distribution function we need a few equations and modules.  
-The modified black body equation is given by:
-![equation](https://latex.codecogs.com/gif.latex?S_\lambda=\kappa_\lambda&space;\Sigma_d&space;B_\nu)
+The modified black body equation is given by:  
+  
+![equation](https://latex.codecogs.com/gif.latex?S_\lambda=\kappa_\lambda&space;\Sigma_d&space;B_\nu)  
+  
 More information about this equation including the derivation and units can be found at [Gordon, 2014](https://arxiv.org/pdf/1406.6066.pdf).  
-..* The kappa variable refers to the emissivity of a dust grain and is dependent on the material and wavelength. Our values come from a table by [authors] but has a limited range at 104 microns. We extrapolate to 164 microns. 
-..* The Sigma_dust variable is the dust surface mass density given by dust mass * solar mass / physical area. We calculate the physical area of a single pixel in square parsecs to use here. For our integrated solution we will use the area of a single pixel, but for our averaged solution we will use the total area of our supernova remnant.
-..*  The black body equation is given by: 
+- The kappa variable refers to the emissivity of a dust grain and is dependent on the material and wavelength. For amorphous carbon, our values come from a table by [(Rouleau & Martin 1991)](http://adsabs.harvard.edu/doi/10.1086/170382) and for silicate we use [(J ̈ageret  al.  2003)](http://adsabs.harvard.edu/doi/10.1086/170382). Both have a wavelength range up to 104 microns so we extrapolate to 164 microns.  
+- The Sigma_dust variable is the dust surface mass density given by dust mass * solar mass / physical area. We calculate the physical area of a single pixel in square parsecs to use here. For our integrated solution we will use the area of a single pixel, but for our averaged solution we will use the total area of our supernova remnant.  
+-  The black body equation is given by: 
 
 ![equation](https://latex.codecogs.com/gif.latex?B_\nu(\nu,T)=\frac{2h\nu^3}{c^2}\frac{1}{e^{h\nu/k_BT}-1})
 
-To determine the error to consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
+To determine the error we consider during our fit we take a calibration error of 10% across instruments and add it in quadrature to the sky noise that we determined in our sky removal section.
 
+<<<<<<< Updated upstream
 ### Integrated SED
 Integrated_SED takes the mean value of the pixel intensities in the subtracted remnant at 24, 70, 100, and 160 microns and fits an SED to those values. The result is a cold dust mass of 0.1 Solar Mass, a warm dust component of 3.98e-05 Solar Mass, and a temperature of 35 K. For convenience, the results and the chi squared confidence intervals of the fit are tabled below.  
 
-![equation](https://i.ibb.co/GWrnRTQ/result.png)
+![Integrated](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/Integrated.png)
 
 ### Pixel by Pixel SED
-PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting.
+PixByPix_SED fits an SED to each individual pixel in the subtracted remnant at 24, 70, 100, and 160 microns and then totals up the resulting mass estimates. The code is split up into saving the fitted data solutions, including chi squared confidence maps, temperature and mass maps, and then loading those results for evaluation and plotting. The saved solutions take up about 2.4 GiBs and so are not immediately apart of the repo. This code will have to be run before using other code that depends on these solutions. 
   
-We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.
-To calculate the error we save each    
-The results can be found in the table below:  
+We consider two solutions here. One with all of the fitted data, the other taking into account that some of the pixel intensities fall below the noise levels, and so may be fit with spurious results.   
   
-  ![table](https://i.imgur.com/YMCKaoc.png)
+#### The Table below sums the solutions for every pixel.  
+The error is summed using a frobenius norm, where all the elements in the matrix are squared and summed before the square root is taken. The error in this table is very high because some of the pixels fall below the sky noise level and so are detection limited. They can therefore be fit with spurious errors. In effect, the error of a very small number of pixels dominates the error in all other pixels.   
+  
+![Includes All Pixels](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/PixbyPix_All.png)
+
+#### To remove this effect, we remove the detection limited pixels. 
+To do this, we create a template where all pixels that are 3 times the noise or higher are set to 1 and all else 0. This template is then multiplied into the solution maps. As a result, the error is reduced significanly as seen in the below table.  
+  
+![Includes Some Pixels](https://raw.githubusercontent.com/AstroLudwig/E0102/master/SED_Fitting/Tables/PixbyPix_DetectionLimited.png)
+  
 ### Quantify Error with Chi Squared Confidence Intervals 
 During SED Fitting, we are fitting 4 data points with 3 parameters. We save a chi squared map in parameter space and determine the width of the intervals that fall within a confidence level of 1 sigma, or 68.3%.  We use the table found in "Numerical Recipes: The Art of Scientific Computing" by William H. Press, 2007. 
 ![Table](https://imgur.com/UQqtGyG.png)
   
-This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
+This is straight forward enough for the integrated SED solution. For the Pixel by Pixel SED solution, all intervals are saved in a map where each pixel in E0102 has an associated chi squared confidence interval for both the cold and warm mass parameters. We then calculate the Frobenius norm of those maps to determine our error. Since we give the temperature solution as an average, and not a sum, we also take the average chi squared confidence interval in points within E0102. 
+### Plotting 
+The majority of plots are handled in VisSed.py and require that integrated SED and Pixel by Pixel SED be run prior to its use. 
 ## Final Files
 This folder contains the background removed images and those images regridded and convolved to match the resolution of the 160 micron image. It contains the final plots that will be included in the paper.
