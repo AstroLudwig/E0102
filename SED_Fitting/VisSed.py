@@ -138,7 +138,7 @@ if plot_integrated:
     # Plot Labels
     plot.set_xlabel("Wavelength ($\mu m$)",size=18)
     plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
-    plot.set_title("Average Spectral Energy Distribution",size=20)
+    plot.set_title("Integrated Spectral Energy Distribution",size=20)
     plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
     
     plot.tick_params(axis='both', which='major', labelsize=16)
