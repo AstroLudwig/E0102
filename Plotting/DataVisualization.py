@@ -141,7 +141,7 @@ if plot_integrated:
 	plot.errorbar([24,70,100,160],AverageIntensities,yerr=AverageError,marker='o',linestyle='none',color="black")
 	# Plot Labels
 	plot.set_xlabel("Wavelength ($\mu m$)",size=18)
-	plot.set_ylabel("Spectral Intensity (Mjy sr$^{-1}$)",size=18)
+	plot.set_ylabel("Spectral Intensity (MJy sr$^{-1}$)",size=18)
 	plot.set_title("Integrated Spectral Energy Distribution",size=20)
 	plot.legend(("Total SED","Warm SED","Cold SED"),prop={'size':14})
 	
