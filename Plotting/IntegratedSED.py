@@ -1,3 +1,10 @@
+# -*- Copyright (c) 2019, Bethany Ann Ludwig, All rights reserved. -*-
+"""
+NAME:
+	Data Visualization - Integrated SED
+PURPOSE:
+	Plots for Integrated (Averaged) SED
+"""
 import sys
 sys.path.insert(0, '../SED_Fitting/')
 
