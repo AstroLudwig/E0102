@@ -114,7 +114,7 @@ if version_2:
 
 	plots = [cx,dx,ix]
 	#colors = ["red","aqua","yellow"]
-	colors = ["darkviolet","#FF00FF","red"]
+	colors = ["#0900ff","#000000","fuchsia"]
 	cmap = plt.get_cmap('viridis')
 
 	# SNR Image
@@ -122,7 +122,7 @@ if version_2:
 	ex.set_xlim(xdim)
 	ex.set_ylim(ydim)
 	ex.axis("off")
-	ex.scatter(Px,Py,s=80, marker='s',facecolors='none',edgecolors=colors)
+	ex.scatter(Px,Py,s=80, marker='s',facecolors='none',edgecolors=colors,linewidths=1.5)
 
 	for i in range(3):
 		ObsvSed = [data[0][Py[i],Px[i]],data[1][Py[i],Px[i]],data[2][Py[i],Px[i]],data[3][Py[i],Px[i]]]
@@ -135,16 +135,18 @@ if version_2:
 		plots[i].grid(color='white',linestyle='-')
 		plots[i].set_facecolor("#EAEAF2")
 
-		plots[i].spines['bottom'].set_color(colors[i])
-		plots[i].spines['top'].set_color(colors[i]) 
-		plots[i].spines['right'].set_color(colors[i])
-		plots[i].spines['left'].set_color(colors[i])
+		spines = ["bottom","top","right","left"]
+		for spine in spines:
+			plots[i].spines[spine].set_color(colors[i])
+			plots[i].spines[spine].set_linewidth(1.5)
+
+	
 
 	plots[0].legend()	
 	plots[1].set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
 	plots[2].set_xlabel("Wavelength ($\mu m$)")
 
-	plt.subplots_adjust(top=.99, bottom=0.12, left=0.09, right=.99, hspace=0.2, wspace=0.12)
+	plt.subplots_adjust(top=.99, bottom=0.09, left=0.09, right=.99, hspace=0.2, wspace=0.12)
 if save:
 	plt.savefig("Plots/PixelByPixel.png",dpi=200)
 if show:
