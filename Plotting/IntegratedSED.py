@@ -7,17 +7,11 @@ PURPOSE:
 """
 import sys
 sys.path.insert(0, '../SED_Fitting/')
-
 from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt 
-from matplotlib.patches import Rectangle
-from matplotlib.collections import PatchCollection
 import Eqs
-import seaborn as sns
-from scipy.stats import norm
-import matplotlib.mlab as mlab
-from scipy.stats import iqr
+
 ##############
 ## Switches ##
 ##############
