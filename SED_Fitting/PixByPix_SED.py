@@ -113,9 +113,12 @@ if load_data:
     ColdMass_Confidence = np.load("Sols/PixbyPix/Cold_Mass_Confidence.npy")
     WarmMass_Confidence = np.load("Sols/PixbyPix/Warm_Mass_Confidence.npy")
 
+    sky_noise = np.loadtxt("../Sky_Remove/Sigma.txt")
+    res_conversion = np.loadtxt("../Sky_Remove/native_res_to_160_res.txt")
+
     # Confidence Interval
     # ========================================================
-    sigma_fit = 0 # 0 is 1 sigma, 1 is 2 sigma, 2 is 3 sigma. 
+    sigma_fit = 1 # 0 is 1 sigma, 1 is 2 sigma, 2 is 3 sigma. 
     # ========================================================
 
     # To get the error I'm calculating the frobenius norm of the interval map
@@ -134,33 +137,35 @@ if load_data:
     print("...")
     
     # Create Detection Limited Template
-    # =====================================================================
-    n = 0 # Sets the threshhold for what factor times the noise is removed
-    # =====================================================================
+    # ========================================================
+    # Sets what multiple of the sky's noise to remove. 
+    # ========================================================
+    noise_multiplier = 3
+    # ========================================================
+    # Initialize array of empty 2d matrices the size of the images.
+    empty_template = np.zeros(np.shape(DataCube[:,:,0])[0]*np.shape(DataCube[:,:,0])[1]).reshape(np.shape(DataCube[:,:,0])[0],np.shape(DataCube[:,:,0])[1])
+    templates = [np.copy(empty_template),np.copy(empty_template),np.copy(empty_template),np.copy(empty_template)]
 
-    Noise = np.loadtxt('../Sky_Remove/Sigma.txt')
-    FlatData = np.sum(np.copy(DataCube),axis=2)
-    nan_r, nan_c = np.where(np.isnan(FlatData))
-    FlatData[nan_r,nan_c] = 0
-    Template = np.copy(FlatData)
-    Template[np.where(np.copy(FlatData) > n * np.sum(Noise))] = 1
-    Template[np.where(np.copy(FlatData) < n * np.sum(Noise))] = 0
-    
-    # Save Template, without nans
- #   np.savetxt("Sols/Templates/Template_"+str(n)+".txt",Template) 
+    for i in range(4):
+        for j in range(np.shape(DataCube[:,:,i])[0]):
+            for k in range(np.shape(DataCube[:,:,i])[1]):
+                if np.isfinite(DataCube[:,:,i][j,k]):
+                    # If the data is greater than some multiple of the noise, keep it by setting it to 1. 
+                    if DataCube[:,:,i][j,k] > noise_multiplier * sky_noise[i] / res_conversion[i]: 
+                        templates[i][j,k] = 1
 
-    # Save Template, with nans, useful later when we're drawing boxes around the detection limited pixels
-    nan_Template = np.copy(Template)
-    nan_Template[nan_r,nan_c] = np.nan
-    np.savetxt("Sols/Templates/Template_"+str(n)+"_with_NaNs.txt",nan_Template)
+    # Multiply all 4 templates together to get a final template             
+    template = np.ones(np.shape(DataCube[:,:,0])[0]*np.shape(DataCube[:,:,0])[1]).reshape(np.shape(DataCube[:,:,0])[0],np.shape(DataCube[:,:,0])[1])
+    for item in templates:
+        template *= item    
 
     # Multiply it by Maps and then take Stats
-    print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)+np.sum(np.copy(WarmMass_Map)*Template))
-            + " pm " + str(np.linalg.norm((np.copy(ColdMass_Confidence[:,:,sigma_fit])+np.copy(WarmMass_Confidence[:,:,sigma_fit]))*Template,ord='fro')))
-    print("Cold Mass "+str(np.sum(np.copy(ColdMass_Map)*Template)) 
-            + " pm " + str(np.linalg.norm(np.copy(ColdMass_Confidence[:,:,sigma_fit])*Template,ord='fro')))
-    print("Warm Mass "+str(np.sum(np.copy(WarmMass_Map)*Template))
-            + " pm " + str(np.linalg.norm(np.copy(WarmMass_Confidence[:,:,sigma_fit])*Template,ord='fro')))
+    print("Total Mass "+str(np.sum(np.copy(ColdMass_Map)*template)+np.sum(np.copy(WarmMass_Map)*template))
+            + " pm " + str(np.linalg.norm((np.copy(ColdMass_Confidence[:,:,sigma_fit])+np.copy(WarmMass_Confidence[:,:,sigma_fit]))*template,ord='fro')))
+    print("Cold Mass "+str(np.sum(np.copy(ColdMass_Map)*template)) 
+            + " pm " + str(np.linalg.norm(np.copy(ColdMass_Confidence[:,:,sigma_fit])*template,ord='fro')))
+    print("Warm Mass "+str(np.sum(np.copy(WarmMass_Map)*template))
+            + " pm " + str(np.linalg.norm(np.copy(WarmMass_Confidence[:,:,sigma_fit])*template,ord='fro')))
     
-    print("Average Temperature "+str(np.mean((np.copy(Temperature_Map)*Template)[np.where(Temperature_Map > 0)]))
-            +" pm "+str(np.mean((np.copy(Temperature_Confidence[:,:,sigma_fit])*Template)[np.where(Temperature_Map>0)])))
+    print("Average Temperature "+str(np.mean((np.copy(Temperature_Map)*template)[np.where(Temperature_Map > 0)]))
+            +" pm "+str(np.mean((np.copy(Temperature_Confidence[:,:,sigma_fit])*template)[np.where(Temperature_Map>0)])))

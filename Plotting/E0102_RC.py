@@ -78,7 +78,7 @@ ax_cbar = f.add_axes([p0[0], 0.1, p1[2]-p0[0], 0.07])
 cbar = plt.colorbar(cax, cax=ax_cbar, orientation='horizontal')
 cbar.outline.set_visible(False)
 cbar.ax.tick_params(labelsize=12) 
-
+cbar.ax.set_title("MJy/sr")
 plt.subplots_adjust(wspace=-.15,hspace=-.1,top=1,bottom=.120,right=1,left=0)
 
 if save:
@@ -111,7 +111,7 @@ for i in range(2):
 		cb = plt.colorbar(im,cax=ax_cb)
 		cb.ax.tick_params(labelsize=12) 
 		cb.outline.set_visible(False)
-
+		cb.ax.set_title("MJy/sr")
 		count += 1
 # Adjust Plot
 plt.subplots_adjust(wspace=-0.05,hspace=0,top=.98,bottom=0,right=.95,left=-0.05)

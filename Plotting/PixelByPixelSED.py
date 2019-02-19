@@ -19,10 +19,9 @@ import Eqs
 ##############
 ## Switches ##
 ##############
-version_1 = False
-version_2 = True
-save = True
-show = False
+
+save = False
+show = True
 sigma_fit = 0
 
 ##################
@@ -55,98 +54,53 @@ Px = [133,123,128]; Py = [121,118,116]
 ##########
 # Plot   #
 ##########
-if version_1:
-	# Initialize Plot
-	f = plt.figure(figsize=(6,7))
 
-	# Initialize SED Plots
-	cx = plt.subplot2grid((3,2),(0,1))
-	dx = plt.subplot2grid((3,2),(1,1))
-	ix = plt.subplot2grid((3,2),(2,1))
+# Initialize Plot
+f = plt.figure(figsize=(7,6))
 
-	# Initialize 160 um image. 
-	ex = plt.subplot2grid((3,2),(0,0),rowspan=3)
+# Initialize SED Plots
+cx = plt.subplot2grid((2,2),(0,1))
+dx = plt.subplot2grid((2,2),(0,0))
+ix = plt.subplot2grid((2,2),(1,1))
 
-	plots = [cx,dx,ix]
-	#colors = ["red","aqua","yellow"]
-	colors = ["darkviolet","#FF00FF","red"]
-	cmap = plt.get_cmap('viridis')
+# Initialize 160 um image. 
+ex = plt.subplot2grid((2,2),(1,0),rowspan=1)
 
-	# SNR Image
-	ex.imshow(img,vmin=np.nanmin(img),vmax=np.nanmax(img))
-	ex.set_xlim(xdim)
-	ex.set_ylim(ydim)
-	ex.axis("off")
-	ex.scatter(Px,Py,s=60, marker='s',facecolors='none',edgecolors=colors)
+plots = [cx,dx,ix]
+#colors = ["red","aqua","yellow"]
+colors = ["#0900ff","#000000","fuchsia"]
+cmap = plt.get_cmap('viridis')
 
-	for i in range(3):
-		ObsvSed = [data[0][Py[i],Px[i]],data[1][Py[i],Px[i]],data[2][Py[i],Px[i]],data[3][Py[i],Px[i]]]
-		ObsvErr = Eqs.error(ObsvSed)
-		plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]]+Pix_Cold_SED[Py[i],Px[i]],label="Total SED",color="#424186")
-		plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]],label="Warm SED",color="#84D44B",ls='dashed')
-		plots[i].plot(lam,Pix_Cold_SED[Py[i],Px[i]],label="Cold SED",color="#23A883")		
+# SNR Image
+ex.imshow(img,vmin=np.nanmin(img),vmax=np.nanmax(img))
+ex.set_xlim(xdim)
+ex.set_ylim(ydim)
+ex.axis("off")
+ex.scatter(Px,Py,s=80, marker='s',facecolors='none',edgecolors=colors,linewidths=1.5)
 
-		plots[i].errorbar(wv,ObsvSed,yerr=ObsvErr,marker='o',linestyle='none',c='black')
-		plots[i].grid(color='white',linestyle='-')
-		plots[i].set_facecolor("#EAEAF2")
+for i in range(3):
+	ObsvSed = [data[0][Py[i],Px[i]],data[1][Py[i],Px[i]],data[2][Py[i],Px[i]],data[3][Py[i],Px[i]]]
+	ObsvErr = Eqs.error(ObsvSed)
+	plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]]+Pix_Cold_SED[Py[i],Px[i]],label="Total SED",color="#424186")
+	plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]],label="Warm SED",color="#84D44B",ls='dashed')
+	plots[i].plot(lam,Pix_Cold_SED[Py[i],Px[i]],label="Cold SED",color="#23A883")		
 
-		plots[i].spines['bottom'].set_color(colors[i])
-		plots[i].spines['top'].set_color(colors[i]) 
-		plots[i].spines['right'].set_color(colors[i])
-		plots[i].spines['left'].set_color(colors[i])
+	plots[i].errorbar(wv,ObsvSed,yerr=ObsvErr,marker='o',linestyle='none',c='black')
+	plots[i].grid(color='white',linestyle='-')
+	plots[i].set_facecolor("#EAEAF2")
 
-	plots[0].legend()	
-	plots[1].set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
-	plots[2].set_xlabel("Wavelength ($\mu m$)")
+	spines = ["bottom","top","right","left"]
+	for spine in spines:
+		plots[i].spines[spine].set_color(colors[i])
+		plots[i].spines[spine].set_linewidth(1.5)
 
-	plt.subplots_adjust(top=.99, bottom=0.05, left=0.0, right=.99, hspace=0.2, wspace=0.09)
-if version_2:
-	# Initialize Plot
-	f = plt.figure(figsize=(7,6))
 
-	# Initialize SED Plots
-	cx = plt.subplot2grid((2,2),(0,1))
-	dx = plt.subplot2grid((2,2),(0,0))
-	ix = plt.subplot2grid((2,2),(1,1))
 
-	# Initialize 160 um image. 
-	ex = plt.subplot2grid((2,2),(1,0),rowspan=1)
+plots[0].legend()	
+plots[1].set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
+plots[2].set_xlabel("Wavelength ($\mu m$)")
 
-	plots = [cx,dx,ix]
-	#colors = ["red","aqua","yellow"]
-	colors = ["#0900ff","#000000","fuchsia"]
-	cmap = plt.get_cmap('viridis')
-
-	# SNR Image
-	ex.imshow(img,vmin=np.nanmin(img),vmax=np.nanmax(img))
-	ex.set_xlim(xdim)
-	ex.set_ylim(ydim)
-	ex.axis("off")
-	ex.scatter(Px,Py,s=80, marker='s',facecolors='none',edgecolors=colors,linewidths=1.5)
-
-	for i in range(3):
-		ObsvSed = [data[0][Py[i],Px[i]],data[1][Py[i],Px[i]],data[2][Py[i],Px[i]],data[3][Py[i],Px[i]]]
-		ObsvErr = Eqs.error(ObsvSed)
-		plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]]+Pix_Cold_SED[Py[i],Px[i]],label="Total SED",color="#424186")
-		plots[i].plot(lam,Pix_Warm_SED[Py[i],Px[i]],label="Warm SED",color="#84D44B",ls='dashed')
-		plots[i].plot(lam,Pix_Cold_SED[Py[i],Px[i]],label="Cold SED",color="#23A883")		
-
-		plots[i].errorbar(wv,ObsvSed,yerr=ObsvErr,marker='o',linestyle='none',c='black')
-		plots[i].grid(color='white',linestyle='-')
-		plots[i].set_facecolor("#EAEAF2")
-
-		spines = ["bottom","top","right","left"]
-		for spine in spines:
-			plots[i].spines[spine].set_color(colors[i])
-			plots[i].spines[spine].set_linewidth(1.5)
-
-	
-
-	plots[0].legend()	
-	plots[1].set_ylabel("Spectral Intensity (MJy sr$^{-1}$)")
-	plots[2].set_xlabel("Wavelength ($\mu m$)")
-
-	plt.subplots_adjust(top=.99, bottom=0.09, left=0.09, right=.99, hspace=0.2, wspace=0.12)
+plt.subplots_adjust(top=.99, bottom=0.09, left=0.09, right=.99, hspace=0.2, wspace=0.12)
 if save:
 	plt.savefig("Plots/PixelByPixel.png",dpi=200)
 if show:

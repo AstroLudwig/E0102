@@ -90,6 +90,7 @@ Pix_Cold_Mass = np.loadtxt("../SED_Fitting/Sols/PixbyPix/ColdMass.txt")
 Pix_chisqrd = np.loadtxt("../SED_Fitting/Sols/PixbyPix/ChiSquared.txt")
 
 sky_noise = np.loadtxt("../Sky_Remove/Sigma.txt")
+res_conversion = np.loadtxt("../Sky_Remove/native_res_to_160_res.txt")
 
 Maps = [Pix_Temp,Pix_Warm_Mass,Pix_Cold_Mass]
 Titles = ["Temperature","Warm Mass","Cold Mass"]
@@ -114,7 +115,7 @@ for i in range(4):
 		for k in range(np.shape(data[i])[1]):
 			if np.isfinite(data[i][j,k]):
 				# If the data is greater than some multiple of the noise, keep it by setting it to 1. 
-				if data[i][j,k] > noise_multiplier * sky_noise[i]: 
+				if data[i][j,k] > noise_multiplier * sky_noise[i] / res_conversion[i]: 
 					templates[i][j,k] = 1
 
 # Multiply all 4 templates together to get a final template				
