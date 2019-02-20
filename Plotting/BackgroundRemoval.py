@@ -14,7 +14,8 @@ from astropy.wcs import WCS
 
 xdim = [114,142]
 ydim = [108,132]
-
+xlim = [[114,142],[114,142],[114,142],[114,142]]
+ylim = [[108,132],[108,132],[108,132],[108,132]]
 title = ["24um","70um","100um","160um"]
 
 f160 = "../Final_Files/160/160_SNR_Prune.fits"
@@ -88,8 +89,10 @@ for i in range(4):
 		ax.text(.5,.5,str(counter))
 		img = ax.imshow(get_data(files[j,i]),vmin=get_min(files[j,i]),vmax=get_max(files[j,i]))
 
-		ax.set_xlim(adjust_lim(files[j,i])[0])
+		ax.set_xlim(get_lim(files[j,i])[0])
+		print((get_lim(files[j,i])[0]))
 		ax.set_ylim(get_lim(files[j,i])[1])
+		print(get_lim(files[j,i])[1])
 
 
 
